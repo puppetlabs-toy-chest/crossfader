@@ -1,8 +1,8 @@
 ---
 :root: /opt/puppet/versions
 :ruby:
-  :src: src/ruby-1.9.3-p194
-  :version: 1.9.3-p194
+  :src: src/ruby-1.9.3-p327
+  :version: 1.9.3-p327
 :openssl:
   :src: src/openssl-1.0.1c
   :version: 1.0.1c

@@ -149,6 +149,25 @@ class OpenSSLBuilder < GenericBuilder
   end
 end
 
+class RubyBuilder < GenericBuilder
+  def initialize(config, id=:ruby, group=:ruby)
+    super(config, id, group)
+  end
+
+  def configure
+    sh <<-EOCONFIG
+      ./configure --prefix=#{prefix} \
+        --with-opt-dir=#{prefix} \
+        --with-yaml-dir=#{prefix} \
+        --with-zlib-dir=#{prefix} \
+        --with-openssl-dir=#{prefix} \
+        --with-readline-dir=/usr \
+        --without-tk --without-tcl
+    EOCONFIG
+  end
+end
+
+
 ##
 # File dependencies
 openssl = OpenSSLBuilder.new(config)
@@ -171,7 +190,15 @@ file "#{ffi.prefix}/lib/libffi.dylib" do
   ffi.build
 end
 
+ruby = RubyBuilder.new(config)
+file "#{ruby.prefix}/bin/ruby" => ["build:ffi", "build:zlib", "build:yaml", "build:openssl"] do
+  ruby.build
+end
+
 namespace "build" do
+  desc "Build ruby (#{ruby.prefix}/bin/ruby)"
+  task :ruby => ["#{ruby.prefix}/bin/ruby"]
+
   desc "Build zlib Library (#{zlib.prefix}/lib/libz.dylib)"
   task :zlib => ["#{zlib.prefix}/lib/libz.dylib"]
 
@@ -186,7 +213,7 @@ namespace "build" do
 end
 
 desc "Build all of the things"
-task :build => ["build:openssl", "build:yaml", "build:ffi"] do
+task :build => ["build:openssl", "build:yaml", "build:ffi", "build:ruby"] do
   puts "All Done!"
 end
 
