@@ -56,3 +56,57 @@ MRI Ruby 1.9.3
  * `pty` => `/usr/lib/libutil.dylib`
  * `tcltk` => Lots of stuff in `/System/Library/Frameworks` (Omit?)
 
+Current Status
+====
+
+After installing Ruby 1.9.3-p327, basic gemsets are possible by simply using
+the `GEM_HOME` and `GEM_PATH` environment variables.  I currently set these to
+named folders inside of the `gemsets` directory of the runtime.  For example:
+
+First, install the global gems:
+
+    export GEM_HOME=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/global
+    gem install rake
+
+Next, install the gems specific to your activity.  In general, development
+activities have a lot more dependencies than runtime dependencies.  This
+organization scheme is very similar to a Bundler bundle.
+
+    PATH=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/global/bin:$PATH
+    PATH=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/dev/bin:$PATH
+    PATH=/opt/puppet/versions/ruby/1.9.3-p327/bin:$PATH
+    GEM_PATH=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/global
+    GEM_HOME=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/dev
+    export PATH GEM_PATH GEM_HOME
+
+Then install the Puppet dependencies:
+
+    gem install rspec -v '~> 2.10.0'
+    gem install mocha -v '~> 0.10.0'
+    gem install json  -v 1.5.4
+    gem install rack  -v 1.4.1
+    gem install yard
+    gem install watchr
+    gem install pry
+    gem install wirb
+    gem install irbtools
+    gem install terminal-notifier
+
+And we can see the specific locations load properly using only `GEM_HOME` and
+`GEM_PATH`.
+
+    $ gem which rake
+    /opt/puppet/versions/ruby/1.9.3-p327/lib/ruby/1.9.1/rake.rb
+    $ gem which rspec
+    /opt/puppet/versions/ruby/1.9.3-p327/gemsets/dev/gems/rspec-2.10.0/lib/rspec.rb
+
+With all of these Gems installed, we now have a complete set of tools to run
+the example behavior suite:
+
+    RUBYLIB=/workspace/puppet/src/hiera/lib
+    RUBYLIB=/workspace/puppet/src/facter/lib:$RUBYLIB
+    RUBYLIB=/workspace/puppet/src/puppet/lib:$RUBYLIB
+    export RUBYLIB
+
+    $ cd puppet
+    $ rake spec
