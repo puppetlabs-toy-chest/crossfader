@@ -106,7 +106,7 @@ class GenericBuilder
   end
 
   def prefix
-    @prefix ||= "#{@config.root}/#{group}/#{group}-#{@config[group][:version]}"
+    @prefix ||= "#{@config.root}/#{group}/#{@config[group][:version]}"
   end
 
   def configure
