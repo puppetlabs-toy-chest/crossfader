@@ -109,29 +109,55 @@ class GenericBuilder
     @prefix ||= "#{@config.root}/#{group}/#{group}-#{@config[group][:version]}"
   end
 
+  def configure
+    sh "./configure --prefix=#{prefix}"
+  end
+
+  def make
+    sh "make -j5"
+  end
+
+  def install
+    sh "make install"
+  end
+
   ##
   # build will configure, compile, then install a piece of software into the
   # target prefix directory.
   def build
     puts "Installing #{id} into #{prefix} ..."
     Dir.chdir(config[@id][:src]) do
-      sh "./configure --prefix=#{prefix}"
-      sh "make -j5"
-      sh "make install"
+      configure
+      make
+      install
     end
   end
 end
 
-class ZlibBuilder < GenericBuilder
-  def initialize(config, id=:zlib)
-    super(config, id)
+class OpenSSLBuilder < GenericBuilder
+  def initialize(config, id=:openssl, group=:ruby)
+    super(config, id, group)
+  end
+
+  def make
+    sh "make"
+  end
+
+  def configure
+    # FIXME portability from darwin64-x86_64-cc
+    sh "./Configure darwin64-x86_64-cc --prefix=#{prefix} -I#{prefix}/include -L#{prefix}/lib zlib no-krb5 shared no-asm"
   end
 end
 
 namespace "build" do
   desc "Build zlib Library"
   task :zlib do
-    ZlibBuilder.new(config).build
+    GenericBuilder.new(config, :zlib).build
+  end
+
+  desc "Build openssl Library"
+  task :openssl => [ "build:zlib" ] do
+    OpenSSLBuilder.new(config).build
   end
 end
 
