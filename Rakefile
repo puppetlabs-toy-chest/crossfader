@@ -161,16 +161,24 @@ file "#{zlib.prefix}/lib/libz.dylib" do
   zlib.build
 end
 
+yaml = GenericBuilder.new(config, :yaml)
+file "#{yaml.prefix}/lib/libyaml.dylib" do
+  yaml.build
+end
+
 namespace "build" do
-  desc "Build zlib Library"
+  desc "Build zlib Library (#{zlib.prefix}/lib/libz.dylib)"
   task :zlib => ["#{zlib.prefix}/lib/libz.dylib"]
 
-  desc "Build openssl Library"
+  desc "Build openssl Library (#{openssl.prefix}/bin/openssl)"
   task :openssl => ["#{openssl.prefix}/bin/openssl"]
+
+  desc "Build yaml Library (#{yaml.prefix}/lib/libyaml.dylib)"
+  task :yaml => ["#{yaml.prefix}/lib/libyaml.dylib"]
 end
 
 desc "Build all of the things"
-task :build => [ "build:openssl" ] do
+task :build => ["build:openssl", "build:yaml"] do
   puts "All Done!"
 end
 

@@ -9,3 +9,6 @@
 :zlib:
   :src: src/zlib-1.2.7
   :version: 1.2.8
+:yaml:
+  :src: src/yaml-0.1.4
+  :version: 0.1.4
