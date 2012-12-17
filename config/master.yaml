@@ -12,3 +12,6 @@
 :yaml:
   :src: src/yaml-0.1.4
   :version: 0.1.4
+:ffi:
+  :src: src/libffi-3.0.11
+  :version: 3.0.11

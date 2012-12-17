@@ -166,6 +166,11 @@ file "#{yaml.prefix}/lib/libyaml.dylib" do
   yaml.build
 end
 
+ffi = GenericBuilder.new(config, :ffi)
+file "#{ffi.prefix}/lib/libffi.dylib" do
+  ffi.build
+end
+
 namespace "build" do
   desc "Build zlib Library (#{zlib.prefix}/lib/libz.dylib)"
   task :zlib => ["#{zlib.prefix}/lib/libz.dylib"]
@@ -175,10 +180,13 @@ namespace "build" do
 
   desc "Build yaml Library (#{yaml.prefix}/lib/libyaml.dylib)"
   task :yaml => ["#{yaml.prefix}/lib/libyaml.dylib"]
+
+  desc "Build ffi Library (#{ffi.prefix}/lib/libffi.dylib)"
+  task :ffi => ["#{ffi.prefix}/lib/libffi.dylib"]
 end
 
 desc "Build all of the things"
-task :build => ["build:openssl", "build:yaml"] do
+task :build => ["build:openssl", "build:yaml", "build:ffi"] do
   puts "All Done!"
 end
 
