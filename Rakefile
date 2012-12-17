@@ -149,20 +149,28 @@ class OpenSSLBuilder < GenericBuilder
   end
 end
 
+##
+# File dependencies
+openssl = OpenSSLBuilder.new(config)
+file "#{openssl.prefix}/bin/openssl" => ["build:zlib"] do
+  openssl.build
+end
+
+zlib = GenericBuilder.new(config, :zlib)
+file "#{zlib.prefix}/lib/libz.dylib" do
+  zlib.build
+end
+
 namespace "build" do
   desc "Build zlib Library"
-  task :zlib do
-    GenericBuilder.new(config, :zlib).build
-  end
+  task :zlib => ["#{zlib.prefix}/lib/libz.dylib"]
 
   desc "Build openssl Library"
-  task :openssl => [ "build:zlib" ] do
-    OpenSSLBuilder.new(config).build
-  end
+  task :openssl => ["#{openssl.prefix}/bin/openssl"]
 end
 
 desc "Build all of the things"
-task :build => [ "build:zlib" ] do
+task :build => [ "build:openssl" ] do
   puts "All Done!"
 end
 
