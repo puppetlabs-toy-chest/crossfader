@@ -1,0 +1,11 @@
+---
+:root: /opt/puppet/versions
+:ruby:
+  :src: src/ruby-1.9.3-p194
+  :version: 1.9.3-p194
+:openssl:
+  :src: src/openssl-1.0.1c
+  :version: 1.0.1c
+:zlib:
+  :src: src/zlib-1.2.7
+  :version: 1.2.8
