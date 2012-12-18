@@ -85,12 +85,10 @@ Then install the Puppet dependencies:
     gem install mocha -v '~> 0.10.0'
     gem install json  -v 1.5.4
     gem install rack  -v 1.4.1
-    gem install yard
-    gem install watchr
-    gem install pry
-    gem install wirb
-    gem install irbtools
-    gem install terminal-notifier
+
+And other nice to have tools:
+
+    gem install hub yard pry watchr wirb irbtools terminal-notifier
 
 And we can see the specific locations load properly using only `GEM_HOME` and
 `GEM_PATH`.
@@ -110,3 +108,18 @@ the example behavior suite:
 
     $ cd puppet
     $ rake spec
+
+Shell Integration
+====
+
+Integration with the shell is provided using the `pvm` command.  This
+executable behaves like `ssh-agent` and prints out SH compatible code suitable
+for evaluation directly in the shell process.
+
+    $ which ruby
+    /usr/bin/ruby
+    $ eval `/opt/puppet/versions/bin/pvm`
+    (1.9.3-p327 dev)$ which ruby
+    /opt/puppet/versions/ruby/1.9.3-p327/bin/ruby
+
+EOF
