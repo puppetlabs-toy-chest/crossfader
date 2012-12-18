@@ -212,6 +212,17 @@ namespace "build" do
   task :ffi => ["#{ffi.prefix}/lib/libffi.dylib"]
 end
 
+directory "#{config.root}"
+directory "#{config.root}/bin"
+file "#{config.root}/bin/pvm" do
+  cp "bin/pvm", "#{config.root}/bin/pvm"
+end
+
+namespace "install" do
+  desc "Install pvm script"
+  task :pvm => ["#{config.root}/bin/pvm"]
+end
+
 desc "Build all of the things"
 task :build => ["build:openssl", "build:yaml", "build:ffi", "build:ruby"] do
   puts "All Done!"
