@@ -1,0 +1,17 @@
+---
+:root: /opt/puppet/versions
+:ruby:
+  :src: src/ruby-1.8.7-p371
+  :version: 1.8.7-p371
+:openssl:
+  :src: src/openssl-1.0.1c
+  :version: 1.0.1c
+:zlib:
+  :src: src/zlib-1.2.7
+  :version: 1.2.8
+:yaml:
+  :src: src/yaml-0.1.4
+  :version: 0.1.4
+:ffi:
+  :src: src/libffi-3.0.11
+  :version: 3.0.11
