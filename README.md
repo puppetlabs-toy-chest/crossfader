@@ -17,7 +17,7 @@ Previous and related works are the [Ruby Version Manager][rvm], [rbenv][rbenv],
 and [Python Virtual Env][virtualenv].
 
 [rbenv]: https://github.com/sstephenson/rbenv
-[rmv]: https://rvm.io/
+[rvm]: https://rvm.io/
 [virtualenv]: https://github.com/pypa/virtualenv/
 
 Filesystem Layout
