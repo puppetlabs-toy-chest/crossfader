@@ -12,13 +12,22 @@
 
 PVM_PATH="/opt/puppet/versions/bin:/opt/puppet/versions/ruby/%rv/bin:/opt/puppet/versions/ruby/%rv/gemsets/%gv/bin:/opt/puppet/versions/ruby/%rv/gemsets/global/bin:${PATH}"
 
+: ${PVM_VERSION:=0.0.1}
+: ${PVM_SHLEVEL:=1}
+: ${PVM_AUTOSTART:=true}
+
 : ${PVM_RUBY_VERSION:=1.9.3-p327}
 : ${PVM_GEMSET:=dev}
 
 newpath="${PVM_PATH}"
 newpath="${newpath//%rv/$PVM_RUBY_VERSION}"
 newpath="${newpath//%gv/$PVM_GEMSET}"
-echo PVM_RUBY_VERSION="'${PVM_RUBY_VERSION}'"
+
+echo export PVM_AUTOSTART="'${PVM_AUTOSTART}'"
+echo export PVM_VERSION="'${PVM_VERSION}'"
+echo export PVM_SHLEVEL="'${PVM_SHLEVEL}'"
+echo export PVM_RUBY_VERSION="'${PVM_RUBY_VERSION}'"
+echo export PVM_GEMSET="'${PVM_GEMSET}'"
 echo export PATH="'${newpath}'"
 echo export GEM_PATH="'/opt/puppet/versions/ruby/${PVM_RUBY_VERSION}/gemsets/global'"
 echo export GEM_HOME="'/opt/puppet/versions/ruby/${PVM_RUBY_VERSION}/gemsets/${PVM_GEMSET}'"
@@ -26,3 +35,10 @@ echo export GEM_HOME="'/opt/puppet/versions/ruby/${PVM_RUBY_VERSION}/gemsets/${P
 if [ -z "$PVM_NO_PROMPT" ]; then
   echo "PS1=\"(${PVM_RUBY_VERSION} ${PVM_GEMSET})\$PS1\""
 fi
+
+# When running commands in subshells, e.g. the :make command in vim executing
+# rspec, the shell rcfiles often re-arrange the PATH.  We can avoid this
+# problem by detecting ourselves at the end of ~/.zshrc like so:
+# if [[ -n "$PVM_SHLEVEL" ]]; then
+#   eval "$(/opt/puppet/versions/bin/pvm)"
+# fi
