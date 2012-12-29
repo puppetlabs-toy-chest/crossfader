@@ -214,13 +214,21 @@ end
 
 directory "#{config.root}"
 directory "#{config.root}/bin"
-file "#{config.root}/bin/pvm" do
-  cp "bin/pvm", "#{config.root}/bin/pvm"
+file "#{config.root}/bin/pvm" => ["uninstall:pvm"] do
+  sh 'cp bin/pvm /opt/puppet/versions/bin/pvm'
+  sh 'chmod 755 /opt/puppet/versions/bin/pvm'
 end
 
 namespace "install" do
   desc "Install pvm script"
   task :pvm => ["#{config.root}/bin/pvm"]
+end
+
+namespace "uninstall" do
+  desc "Remove pvm script"
+  task :pvm do
+    sh 'rm -f /opt/puppet/versions/bin/pvm'
+  end
 end
 
 desc "Build all of the things"
