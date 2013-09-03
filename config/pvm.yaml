@@ -2,19 +2,14 @@
 :root: /opt/pvm/versions
 :ruby:
   :src: src/ruby-1.9.3-p448
-  :version: 1.9.3-p448
+  :version: animal
 :openssl:
   :src: src/openssl-1.0.1e
-  :version: 1.0.1e
 :zlib:
   :src: src/zlib-1.2.7
-  :version: 1.2.7
 :yaml:
   :src: src/yaml-0.1.4
-  :version: 0.1.4
 :ffi:
   :src: src/libffi-3.0.11
-  :version: 3.0.11
 :autoconf:
   :src: src/autoconf-2.68
-  :version: 2.68

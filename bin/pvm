@@ -10,13 +10,13 @@
 # %rv = Ruby, version, e.g. 1.9.3-p327
 # %gv = Gemset name, e.g. dev
 
-PVM_PATH="/opt/puppet/versions/bin:/opt/puppet/versions/ruby/%rv/bin:/opt/puppet/versions/ruby/%rv/gemsets/%gv/bin:/opt/puppet/versions/ruby/%rv/gemsets/global/bin:${PATH}"
+PVM_PATH="/opt/pvm/versions/bin:/opt/puppet/versions/ruby/%rv/bin:/opt/puppet/versions/ruby/%rv/gemsets/%gv/bin:/opt/puppet/versions/ruby/%rv/gemsets/global/bin:${PATH}"
 
 : ${PVM_VERSION:=0.0.1}
 : ${PVM_SHLEVEL:=1}
 : ${PVM_AUTOSTART:=true}
 
-: ${PVM_RUBY_VERSION:=1.9.3-p327}
+: ${PVM_RUBY_VERSION:=1.9.3-p448}
 : ${PVM_GEMSET:=dev}
 
 newpath="${PVM_PATH}"
