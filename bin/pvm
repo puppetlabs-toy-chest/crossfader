@@ -10,35 +10,52 @@
 # %rv = Ruby, version, e.g. 1.9.3-p327
 # %gv = Gemset name, e.g. dev
 
-PVM_PATH="/opt/pvm/versions/bin:/opt/puppet/versions/ruby/%rv/bin:/opt/puppet/versions/ruby/%rv/gemsets/%gv/bin:/opt/puppet/versions/ruby/%rv/gemsets/global/bin:${PATH}"
+PVM_HOME="/opt/pvm"
+
+PVM_PATH="${PVM_HOME}/versions/bin:${PVM_HOME}/versions/ruby/%rv/bin:${PVM_HOME}/versions/ruby/%rv/gemsets/%gv/bin:${PVM_HOME}/versions/ruby/%rv/gemsets/global/bin:${PATH}"
 
 : ${PVM_VERSION:=0.0.1}
 : ${PVM_SHLEVEL:=1}
 : ${PVM_AUTOSTART:=true}
 
 : ${PVM_RUBY_VERSION:=1.9.3-p448}
-: ${PVM_GEMSET:=dev}
+: ${PVM_GEMSET:=bundler}
 
 newpath="${PVM_PATH}"
 newpath="${newpath//%rv/$PVM_RUBY_VERSION}"
 newpath="${newpath//%gv/$PVM_GEMSET}"
 
-echo export PVM_AUTOSTART="'${PVM_AUTOSTART}'"
-echo export PVM_VERSION="'${PVM_VERSION}'"
-echo export PVM_SHLEVEL="'${PVM_SHLEVEL}'"
-echo export PVM_RUBY_VERSION="'${PVM_RUBY_VERSION}'"
-echo export PVM_GEMSET="'${PVM_GEMSET}'"
-echo export PATH="'${newpath}'"
-echo export GEM_PATH="'/opt/puppet/versions/ruby/${PVM_RUBY_VERSION}/gemsets/global'"
-echo export GEM_HOME="'/opt/puppet/versions/ruby/${PVM_RUBY_VERSION}/gemsets/${PVM_GEMSET}'"
+# This is a hack
+RUBY_API_VERSION="$(${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/bin/ruby -rrbconfig -e 'puts "#{RbConfig::CONFIG[%q{MAJOR}]}.#{RbConfig::CONFIG[%q{MINOR}]}.#{RbConfig::CONFIG[%q{TEENY}]}"')"
 
-if [ -z "$PVM_NO_PROMPT" ]; then
-  echo "PS1=\"(${PVM_RUBY_VERSION} ${PVM_GEMSET})\$PS1\""
+if [ -n "$1" ]; then
+  export PVM_AUTOSTART="${PVM_AUTOSTART}"
+  export PVM_VERSION="${PVM_VERSION}"
+  export PVM_SHLEVEL="${PVM_SHLEVEL}"
+  export PVM_RUBY_VERSION="${PVM_RUBY_VERSION}"
+  export PVM_GEMSET="${PVM_GEMSET}"
+  export PATH="${newpath}"
+  export GEM_PATH="${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/gemsets/global:${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/lib/ruby/gems/${RUBY_API_VERSION}"
+  export GEM_HOME="${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/gemsets/${PVM_GEMSET}"
+  exec "$@"
+else
+  echo export PVM_AUTOSTART="'${PVM_AUTOSTART}'"
+  echo export PVM_VERSION="'${PVM_VERSION}'"
+  echo export PVM_SHLEVEL="'${PVM_SHLEVEL}'"
+  echo export PVM_RUBY_VERSION="'${PVM_RUBY_VERSION}'"
+  echo export PVM_GEMSET="'${PVM_GEMSET}'"
+  echo export PATH="'${newpath}'"
+  echo export GEM_PATH="'${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/gemsets/global:${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/lib/ruby/gems/${RUBY_API_VERSION}'"
+  echo export GEM_HOME="'${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/gemsets/${PVM_GEMSET}'"
+
+  if [ -z "$PVM_NO_PROMPT" ]; then
+    echo "PS1=\"(${PVM_RUBY_VERSION} ${PVM_GEMSET})\$PS1\""
+  fi
 fi
 
 # When running commands in subshells, e.g. the :make command in vim executing
 # rspec, the shell rcfiles often re-arrange the PATH.  We can avoid this
 # problem by detecting ourselves at the end of ~/.zshrc like so:
 # if [[ -n "$PVM_SHLEVEL" ]]; then
-#   eval "$(/opt/puppet/versions/bin/pvm)"
+#   eval "$(${PVM_HOME}/versions/bin/pvm)"
 # fi

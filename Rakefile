@@ -235,6 +235,12 @@ end
 namespace "install" do
   desc "Install pvm script (#{config.root}/bin/pvm)"
   task :pvm => ["#{config.root}/bin/pvm"]
+
+  desc "Install default gems"
+  task :gems => ["#{config.root}/bin/pvm"] do
+    sh "bash -c 'PVM_GEMSET=bundler PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm gem install bundler --no-rdoc'"
+    sh "bash -c 'PVM_GEMSET=pvm PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm gem install trollop --no-rdoc'"
+  end
 end
 
 namespace "uninstall" do
