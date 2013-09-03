@@ -110,7 +110,7 @@ class GenericBuilder
   end
 
   def configure
-    sh "./configure --prefix=#{prefix}"
+    sh "bash ./configure --prefix=#{prefix}"
   end
 
   def make
@@ -145,7 +145,7 @@ class OpenSSLBuilder < GenericBuilder
 
   def configure
     # FIXME portability from darwin64-x86_64-cc
-    sh "./Configure darwin64-x86_64-cc --prefix=#{prefix} -I#{prefix}/include -L#{prefix}/lib zlib no-krb5 shared no-asm"
+    sh "bash ./Configure darwin64-x86_64-cc --prefix=#{prefix} -I#{prefix}/include -L#{prefix}/lib zlib no-krb5 shared no-asm"
   end
 end
 
@@ -156,7 +156,7 @@ class RubyBuilder < GenericBuilder
 
   def configure
     sh <<-EOCONFIG
-      ./configure --prefix=#{prefix} \
+      bash ./configure --prefix=#{prefix} \
         --with-opt-dir=#{prefix} \
         --with-yaml-dir=#{prefix} \
         --with-zlib-dir=#{prefix} \
