@@ -154,6 +154,10 @@ class RubyBuilder < GenericBuilder
     super(config, id, group)
   end
 
+  def make
+    sh "RDOCFLAGS='--debug' make -j5"
+  end
+
   def configure
     sh "#{prefix}/bin/autoconf"
     sh <<-EOCONFIG
