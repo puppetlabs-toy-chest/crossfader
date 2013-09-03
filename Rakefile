@@ -54,7 +54,7 @@ class Configuration
 
   def config_reset
     @config = Hash.new() do |h, (k,v)|
-      raise KeyError, "Configuration key #{k.inspect} does not exist in #{@config_file}"
+      raise IndexError, "Configuration key #{k.inspect} does not exist in #{@config_file}"
     end
   end
   private :config_reset
@@ -155,6 +155,7 @@ class RubyBuilder < GenericBuilder
   end
 
   def configure
+    sh "#{prefix}/bin/autoconf"
     sh <<-EOCONFIG
       bash ./configure --prefix=#{prefix} \
         --with-opt-dir=#{prefix} \
@@ -190,14 +191,22 @@ file "#{ffi.prefix}/lib/libffi.dylib" do
   ffi.build
 end
 
+autoconf = GenericBuilder.new(config, :autoconf)
+file "#{autoconf.prefix}/bin/autoconf" do
+  autoconf.build
+end
+
 ruby = RubyBuilder.new(config)
-file "#{ruby.prefix}/bin/ruby" => ["build:ffi", "build:zlib", "build:yaml", "build:openssl"] do
+file "#{ruby.prefix}/bin/ruby" => ["build:ffi", "build:zlib", "build:yaml", "build:openssl", "build:autoconf"] do
   ruby.build
 end
 
 namespace "build" do
   desc "Build ruby (#{ruby.prefix}/bin/ruby)"
   task :ruby => ["#{ruby.prefix}/bin/ruby"]
+
+  desc "Build autoconf (#{ruby.prefix}/bin/autoconf)"
+  task :autoconf => ["#{ruby.prefix}/bin/autoconf"]
 
   desc "Build zlib Library (#{zlib.prefix}/lib/libz.dylib)"
   task :zlib => ["#{zlib.prefix}/lib/libz.dylib"]
