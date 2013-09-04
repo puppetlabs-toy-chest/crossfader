@@ -12,14 +12,17 @@
 
 PVM_HOME="/opt/pvm"
 
-PVM_PATH="${PVM_HOME}/versions/bin:${PVM_HOME}/versions/ruby/%rv/bin:${PVM_HOME}/versions/ruby/%rv/gemsets/%gv/bin:${PVM_HOME}/versions/ruby/%rv/gemsets/global/bin:${PATH}"
-
 : ${PVM_VERSION:=0.0.1}
-: ${PVM_SHLEVEL:=1}
+: ${PVM_SHLEVEL:=0}
+PVM_SHLEVEL=$((PVM_SHLEVEL + 1))
 : ${PVM_AUTOSTART:=true}
 
 : ${PVM_RUBY_VERSION:=1.9.3-p448}
 : ${PVM_GEMSET:=bundler}
+
+: ${PVM_OLD_PATH:=$PATH}
+
+PVM_PATH="${PVM_HOME}/versions/bin:${PVM_HOME}/versions/ruby/%rv/bin:${PVM_HOME}/versions/ruby/%rv/gemsets/%gv/bin:${PVM_HOME}/versions/ruby/%rv/gemsets/global/bin:${PVM_OLD_PATH}"
 
 newpath="${PVM_PATH}"
 newpath="${newpath//%rv/$PVM_RUBY_VERSION}"
@@ -35,6 +38,7 @@ if [ "exec" == "$1" ]; then
   export PVM_SHLEVEL="${PVM_SHLEVEL}"
   export PVM_RUBY_VERSION="${PVM_RUBY_VERSION}"
   export PVM_GEMSET="${PVM_GEMSET}"
+  export PVM_OLD_PATH="${PVM_OLD_PATH}"
   export PATH="${newpath}"
   export GEM_PATH="${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/gemsets/global:${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/lib/ruby/gems/${RUBY_API_VERSION}"
   export GEM_HOME="${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/gemsets/${PVM_GEMSET}"
@@ -45,12 +49,13 @@ else
   echo export PVM_SHLEVEL="'${PVM_SHLEVEL}'"
   echo export PVM_RUBY_VERSION="'${PVM_RUBY_VERSION}'"
   echo export PVM_GEMSET="'${PVM_GEMSET}'"
+  echo export PVM_OLD_PATH="'${PVM_OLD_PATH}'"
   echo export PATH="'${newpath}'"
   echo export GEM_PATH="'${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/gemsets/global:${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/lib/ruby/gems/${RUBY_API_VERSION}'"
   echo export GEM_HOME="'${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/gemsets/${PVM_GEMSET}'"
 
   if [ -z "$PVM_NO_PROMPT" ]; then
-    echo "PS1=\"(${PVM_RUBY_VERSION} ${PVM_GEMSET})\$PS1\""
+    echo "PS1=\"(${PVM_RUBY_VERSION} ${PVM_GEMSET})\${PS1#\(*\)}\""
   fi
 fi
 
