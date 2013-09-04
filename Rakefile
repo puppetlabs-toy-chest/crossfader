@@ -54,7 +54,7 @@ class Configuration
 
   def config_reset
     @config = Hash.new() do |h, (k,v)|
-      raise KeyError, "Configuration key #{k.inspect} does not exist in #{@config_file}"
+      raise IndexError, "Configuration key #{k.inspect} does not exist in #{@config_file}"
     end
   end
   private :config_reset
@@ -72,7 +72,11 @@ class Configuration
   end
 
   def [](key)
-    config[key]
+    begin
+      config[key]
+    rescue IndexError => detail
+      nil
+    end
   end
 
   def root
@@ -110,7 +114,7 @@ class GenericBuilder
   end
 
   def configure
-    sh "./configure --prefix=#{prefix}"
+    sh "bash ./configure --prefix=#{prefix}"
   end
 
   def make
@@ -145,7 +149,20 @@ class OpenSSLBuilder < GenericBuilder
 
   def configure
     # FIXME portability from darwin64-x86_64-cc
-    sh "./Configure darwin64-x86_64-cc --prefix=#{prefix} -I#{prefix}/include -L#{prefix}/lib zlib no-krb5 shared no-asm"
+    sh "bash ./Configure darwin64-x86_64-cc --prefix=#{prefix} -I#{prefix}/include -L#{prefix}/lib zlib no-krb5 shared no-asm"
+  end
+end
+
+class RubyGemsBuilder < GenericBuilder
+  def initialize(config, id=:rubygems, group=:ruby)
+    super(config, id, group)
+  end
+
+  def build
+    puts "Installing #{id} into #{prefix} ..."
+    Dir.chdir(config[@id][:src]) do
+      sh "#{prefix}/bin/ruby setup.rb"
+    end
   end
 end
 
@@ -154,9 +171,14 @@ class RubyBuilder < GenericBuilder
     super(config, id, group)
   end
 
+  def make
+    sh "RDOCFLAGS='--debug' make -j5"
+  end
+
   def configure
+    sh "#{prefix}/bin/autoconf"
     sh <<-EOCONFIG
-      ./configure --prefix=#{prefix} \
+      bash ./configure --prefix=#{prefix} \
         --with-opt-dir=#{prefix} \
         --with-yaml-dir=#{prefix} \
         --with-zlib-dir=#{prefix} \
@@ -190,14 +212,36 @@ file "#{ffi.prefix}/lib/libffi.dylib" do
   ffi.build
 end
 
+autoconf = GenericBuilder.new(config, :autoconf)
+file "#{autoconf.prefix}/bin/autoconf" do
+  autoconf.build
+end
+
 ruby = RubyBuilder.new(config)
-file "#{ruby.prefix}/bin/ruby" => ["build:ffi", "build:zlib", "build:yaml", "build:openssl"] do
+file "#{ruby.prefix}/bin/ruby" => ["build:ffi", "build:zlib", "build:yaml", "build:openssl", "build:autoconf"] do
   ruby.build
+end
+
+if config[:rubygems]
+  rubygems = RubyGemsBuilder.new(config, :rubygems)
+  file "#{rubygems.prefix}/bin/gem" => ["#{rubygems.prefix}/bin/ruby"] do
+    rubygems.build
+  end
+  namespace "build" do
+    desc "Build rubygems"
+    task :rubygems => ["#{rubygems.prefix}/bin/gem"]
+  end
+  namespace "install" do
+    task :gems => ["#{rubygems.prefix}/bin/gem"]
+  end
 end
 
 namespace "build" do
   desc "Build ruby (#{ruby.prefix}/bin/ruby)"
   task :ruby => ["#{ruby.prefix}/bin/ruby"]
+
+  desc "Build autoconf (#{ruby.prefix}/bin/autoconf)"
+  task :autoconf => ["#{ruby.prefix}/bin/autoconf"]
 
   desc "Build zlib Library (#{zlib.prefix}/lib/libz.dylib)"
   task :zlib => ["#{zlib.prefix}/lib/libz.dylib"]
@@ -214,20 +258,26 @@ end
 
 directory "#{config.root}"
 directory "#{config.root}/bin"
-file "#{config.root}/bin/pvm" => ["uninstall:pvm"] do
-  sh 'cp bin/pvm /opt/puppet/versions/bin/pvm'
-  sh 'chmod 755 /opt/puppet/versions/bin/pvm'
+file "#{config.root}/bin/pvm" => ["#{config.root}/bin", "uninstall:pvm"] do
+  sh "cp bin/pvm #{config.root}/bin/pvm"
+  sh "chmod 755 #{config.root}/bin/pvm"
 end
 
 namespace "install" do
-  desc "Install pvm script"
+  desc "Install pvm script (#{config.root}/bin/pvm)"
   task :pvm => ["#{config.root}/bin/pvm"]
+
+  desc "Install default gems"
+  task :gems => ["#{config.root}/bin/pvm"] do
+    sh "bash -c 'PVM_GEMSET=bundler PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm exec gem install bundler --no-rdoc'"
+    sh "bash -c 'PVM_GEMSET=pvm PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm exec gem install trollop --no-rdoc'"
+  end
 end
 
 namespace "uninstall" do
-  desc "Remove pvm script"
+  desc "Remove pvm script (#{config.root}/bin/pvm)"
   task :pvm do
-    sh 'rm -f /opt/puppet/versions/bin/pvm'
+    sh "rm -f #{config.root}/bin/pvm"
   end
 end
 
@@ -239,4 +289,12 @@ end
 desc "Purge #{config.root}"
 task :purge do
   rm_rf config.root
+end
+
+desc "Package #{config.root}"
+task :package do
+  sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
+  sh "mkdir -p #{File.join('destroot', config.root)}"
+  sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
+  sh "pkgbuild --identifier com.puppetlabs.pvm --root destroot --ownership recommended --version 0.0.1 'Puppet Version Manager.pkg'"
 end

@@ -321,7 +321,12 @@ option)
 
     @stats.add_file filename
 
-    content = RDoc::Encoding.read_file filename, encoding
+    begin
+      content = RDoc::Encoding.read_file filename, encoding
+    rescue Encoding::ConverterNotFoundError => detail
+      puts "Warning: Could not generate rdoc for #{filename} #{detail.message}"
+      content = nil
+    end
 
     return unless content
 
