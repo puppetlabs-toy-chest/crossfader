@@ -72,7 +72,11 @@ class Configuration
   end
 
   def [](key)
-    config[key]
+    begin
+      config[key]
+    rescue IndexError => detail
+      nil
+    end
   end
 
   def root
@@ -149,6 +153,19 @@ class OpenSSLBuilder < GenericBuilder
   end
 end
 
+class RubyGemsBuilder < GenericBuilder
+  def initialize(config, id=:rubygems, group=:ruby)
+    super(config, id, group)
+  end
+
+  def build
+    puts "Installing #{id} into #{prefix} ..."
+    Dir.chdir(config[@id][:src]) do
+      sh "#{prefix}/bin/ruby setup.rb"
+    end
+  end
+end
+
 class RubyBuilder < GenericBuilder
   def initialize(config, id=:ruby, group=:ruby)
     super(config, id, group)
@@ -203,6 +220,20 @@ end
 ruby = RubyBuilder.new(config)
 file "#{ruby.prefix}/bin/ruby" => ["build:ffi", "build:zlib", "build:yaml", "build:openssl", "build:autoconf"] do
   ruby.build
+end
+
+if config[:rubygems]
+  rubygems = RubyGemsBuilder.new(config, :rubygems)
+  file "#{rubygems.prefix}/bin/gem" => ["#{rubygems.prefix}/bin/ruby"] do
+    rubygems.build
+  end
+  namespace "build" do
+    desc "Build rubygems"
+    task :rubygems => ["#{rubygems.prefix}/bin/gem"]
+  end
+  namespace "install" do
+    task :gems => ["#{rubygems.prefix}/bin/gem"]
+  end
 end
 
 namespace "build" do

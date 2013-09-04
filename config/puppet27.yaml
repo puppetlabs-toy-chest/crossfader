@@ -13,3 +13,5 @@
   :src: src/libffi-3.0.11
 :autoconf:
   :src: src/autoconf-2.68
+:rubygems:
+  :src: src/rubygems-1.8.24
