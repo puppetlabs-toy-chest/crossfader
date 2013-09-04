@@ -28,7 +28,8 @@ newpath="${newpath//%gv/$PVM_GEMSET}"
 # This is a hack
 RUBY_API_VERSION="$(${PVM_HOME}/versions/ruby/${PVM_RUBY_VERSION}/bin/ruby -rrbconfig -e 'puts "#{RbConfig::CONFIG[%q{MAJOR}]}.#{RbConfig::CONFIG[%q{MINOR}]}.#{RbConfig::CONFIG[%q{TEENY}]}"')"
 
-if [ -n "$1" ]; then
+if [ "exec" == "$1" ]; then
+  shift
   export PVM_AUTOSTART="${PVM_AUTOSTART}"
   export PVM_VERSION="${PVM_VERSION}"
   export PVM_SHLEVEL="${PVM_SHLEVEL}"

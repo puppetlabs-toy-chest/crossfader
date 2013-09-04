@@ -238,8 +238,8 @@ namespace "install" do
 
   desc "Install default gems"
   task :gems => ["#{config.root}/bin/pvm"] do
-    sh "bash -c 'PVM_GEMSET=bundler PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm gem install bundler --no-rdoc'"
-    sh "bash -c 'PVM_GEMSET=pvm PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm gem install trollop --no-rdoc'"
+    sh "bash -c 'PVM_GEMSET=bundler PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm exec gem install bundler --no-rdoc'"
+    sh "bash -c 'PVM_GEMSET=pvm PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm exec gem install trollop --no-rdoc'"
   end
 end
 
@@ -258,4 +258,12 @@ end
 desc "Purge #{config.root}"
 task :purge do
   rm_rf config.root
+end
+
+desc "Package #{config.root}"
+task :package do
+  sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
+  sh "mkdir -p #{File.join('destroot', config.root)}"
+  sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
+  sh "pkgbuild --identifier com.puppetlabs.pvm --root destroot --ownership recommended --version 0.0.1 'Puppet Version Manager.pkg'"
 end

@@ -10,6 +10,40 @@ This capability makes it possible to eliminate much of the risk associated with
 trying out new versions of Puppet.  This, in turn, allows Puppet Labs to make
 incompatible changes at a high frequency.
 
+Quick Start
+====
+
+To build all configured versions of Ruby and install bundler into the gemset
+named bundler, execute the following:
+
+    for i in config/*.yaml
+    do
+      c=${i##*/}
+      c=${c%%.yaml}
+      git reset --hard HEAD
+      git clean -fdx
+      echo Building $c
+      PVM_CONFIG=$c rake build
+      PVM_CONFIG=$c rake install:gems
+    done
+
+This sequence will fully rebuild ruby and all of the dependencies for each ruby
+configuration listed.
+
+Once the build finishes, a package may be created using:
+
+    rake package
+
+This package will install into the system and is usable from a shell
+environment.  For example:
+
+    eval "$(/opt/pvm/versions/bin/pvm shellinit)"
+
+This could be added to the shell initialization files.  For example, in
+`~/.zshrc`:
+
+    echo '[ -x /opt/pvm/versions/bin/pvm ] && eval "$(/opt/pvm/versions/bin/pvm shellinit)"' >> ~/.zshrc
+
 Related Work
 ====
 
