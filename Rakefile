@@ -9,6 +9,8 @@ task :help do
 end
 task :default => :help
 
+class ConfigurationError < StandardError; end
+
 ##
 # configname determines which configuration file will be read from
 # `config/<configname>.yaml`.  The default is "master" and can be overridden
@@ -36,6 +38,17 @@ class Configuration
     @name = name
     @config_file = File.join(File.dirname(__FILE__), "config/#{name}.yaml")
     config_reset
+    version
+  end
+
+  def version
+    @version ||= `git describe --always`.chomp
+  end
+
+  def package_name
+    name = self[:name]
+    raise ConfigurationError, "no :name key in configuration #{@config_file}" unless name
+    "#{self[:name]}-#{self.version}.pkg"
   end
 
   ##
@@ -328,16 +341,23 @@ namespace :purge do
   end
 end
 
-desc "Package #{config.root}"
+desc "Package #{config.root} into #{config.package_name}"
 task :package do
   sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
   sh "mkdir -p #{File.join('destroot', config.root)}"
   sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
-  sh "pkgbuild --identifier com.puppetlabs.pvm --root destroot --ownership recommended --version 0.0.1 'Puppet Version Manager.pkg'"
+  sh "pkgbuild --identifier com.puppetlabs.#{config[:name]} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
 end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
   require 'pry'; binding.pry
   true
+end
+
+namespace :print do
+  desc "Print the package name for this configuration"
+  task :package_name do
+    puts config.package_name
+  end
 end
