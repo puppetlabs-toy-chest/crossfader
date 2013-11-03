@@ -351,8 +351,21 @@ end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
-  require 'pry'; binding.pry
-  true
+
+  # Each Ruby Configuration
+  Dir["config/crossfader_*.yaml"].each do |crossfader_config|
+    rm_rf 'destroot'
+    sh 'git clean -fdx src/'
+    Dir["/opt/crossfader/*"].each do |dir|
+      rm_rf dir
+    end
+    path = Pathname.new(crossfader_config)
+    sh "bundle exec rake PVM_CONFIG=#{path.basename('.yaml')} build"
+    sh "bundle exec rake PVM_CONFIG=#{path.basename('.yaml')} package"
+  end
+
+  # Crossfader tool itself.
+  # FIXME
 end
 
 desc "Reset the build tree"
