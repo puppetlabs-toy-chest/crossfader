@@ -193,11 +193,38 @@ class RubyBuilder < GenericBuilder
   end
 end
 
+##
+# Custom Tasks
+def unpack(name, src, dest, *args)
+  args || args = []
+  args.insert 0, name
+
+  body = proc {
+    FileList[src].each do |f|
+      file = File.basename(f)
+      puts "Unpacking #{file} in #{dest}"
+      Dir.chdir dest do
+        sh "tar -xjf #{file}"
+      end
+    end
+  }
+  Rake::Task.define_task(*args, &body)
+end
+
+##
+# Unpack ruby instead of committing it to the source tree because I noticed
+# we're getting missing encodings and it seems like we're not the only ones
+# according to
+# http://www.pressingquestion.com/4210120/What-Causes-A-Encodingconverter
+namespace :unpack do
+  unpack :ruby, "#{config[:ruby][:src]}.tar.bz2", "src/"
+  unpack :openssl, "#{config[:openssl][:src]}.tar.bz2", "src/"
+end
 
 ##
 # File dependencies
 openssl = OpenSSLBuilder.new(config)
-file "#{openssl.prefix}/bin/openssl" => ["build:zlib"] do
+file "#{openssl.prefix}/bin/openssl" => ["unpack:openssl", "build:zlib"] do
   openssl.build
 end
 
@@ -222,7 +249,7 @@ file "#{autoconf.prefix}/bin/autoconf" do
 end
 
 ruby = RubyBuilder.new(config)
-file "#{ruby.prefix}/bin/ruby" => ["build:ffi", "build:zlib", "build:yaml", "build:openssl", "build:autoconf"] do
+file "#{ruby.prefix}/bin/ruby" => ["unpack:ruby", "build:ffi", "build:zlib", "build:yaml", "build:openssl", "build:autoconf"] do
   ruby.build
 end
 
