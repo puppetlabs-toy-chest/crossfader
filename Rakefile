@@ -285,7 +285,7 @@ namespace "uninstall" do
   end
 end
 
-desc "Build all of the things"
+desc "Build all of the things (PVM_CONFIG=#{configname})"
 task :build => ["build:openssl", "build:yaml", "build:ffi", "build:ruby"] do
   puts "All Done!"
 end
