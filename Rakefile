@@ -317,9 +317,15 @@ task :build => ["build:openssl", "build:yaml", "build:ffi", "build:ruby"] do
   puts "All Done!"
 end
 
-desc "Purge #{config.root}"
-task :purge do
-  rm_rf config.root
+namespace :purge do
+  desc "Purge #{config.root}"
+  task :root do
+    rm_rf config.root
+  end
+  desc "Purge destroot/"
+  task :destroot do
+    rm_rf 'destroot/'
+  end
 end
 
 desc "Package #{config.root}"
