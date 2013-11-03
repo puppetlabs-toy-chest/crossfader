@@ -1,2 +1,4 @@
 destroot/
 *.pkg
+.bundle/
+Gemfile.lock

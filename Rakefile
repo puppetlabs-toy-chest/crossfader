@@ -302,3 +302,9 @@ task :package do
   sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
   sh "pkgbuild --identifier com.puppetlabs.pvm --root destroot --ownership recommended --version 0.0.1 'Puppet Version Manager.pkg'"
 end
+
+desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
+task :crossfader do
+  require 'pry'; binding.pry
+  true
+end
