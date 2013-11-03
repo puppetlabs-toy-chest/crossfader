@@ -82,6 +82,10 @@ class Configuration
   def root
     config[:root]
   end
+
+  def root_is_prefix?
+    !!config[:root_is_prefix]
+  end
 end
 
 ##
@@ -110,7 +114,7 @@ class GenericBuilder
   end
 
   def prefix
-    @prefix ||= "#{@config.root}/#{group}/#{@config[group][:version]}"
+    @prefix ||= @config.root_is_prefix? ? @config.root : "#{@config.root}/#{group}/#{@config[group][:version]}"
   end
 
   def configure

@@ -1,6 +1,6 @@
 ---
-:root: /opt/pvm/versions
-:root_is_prefix: false
+:root: /opt/backline
+:root_is_prefix: true
 :ruby:
   :src: src/ruby-1.9.3-p448
   :version: 1.9.3-p448
