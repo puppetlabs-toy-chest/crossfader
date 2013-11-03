@@ -96,7 +96,7 @@ end
 # In particular, the `build` method provides a public API to compile a generic
 # C application like zlib.
 class GenericBuilder
-  # include Rake::FileUtilsExt
+  include Rake::FileUtilsExt
   attr_reader :config
   attr_reader :id
   attr_reader :group
