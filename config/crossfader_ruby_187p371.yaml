@@ -1,6 +1,7 @@
 ---
-:root: /opt/crossfader
+:root: /opt/crossfader/versions
 :root_is_prefix: false
+:name: crossfader_ruby_187p371_1
 :ruby:
   :src: src/ruby-1.8.7-p371
   :version: 1.8.7-p371

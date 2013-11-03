@@ -355,6 +355,15 @@ task :crossfader do
   true
 end
 
+desc "Reset the build tree"
+task :reset do
+  rm_rf "destroot"
+  Dir["#{config.root}/*"].each do |d|
+    rm_rf d
+  end
+  sh 'git clean -fdx src'
+end
+
 namespace :print do
   desc "Print the package name for this configuration"
   task :package_name do
