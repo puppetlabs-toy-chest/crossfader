@@ -1,7 +1,8 @@
 ---
 :root: /opt/crossfader/runtime
 :root_is_prefix: true
-:name: crossfaderuntime
+:name: crossfader
+:name_suffix: runtime_ruby
 :ruby:
   :src: src/ruby-1.9.3-p448
   :version: 1.9.3-p448

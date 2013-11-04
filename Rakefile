@@ -30,7 +30,6 @@ end
 
 class Configuration
   attr_reader :name
-  attr_reader :config
 
   ##
   # This is the name of this configuration instance.  This will map directly to
@@ -46,16 +45,20 @@ class Configuration
     @version ||= `git describe --always`.chomp
   end
 
+  def mac_version
+    @mac_version ||= Facter.fact('macosx_productversion_major').value
+  end
+
   def package_id
     name = self[:name]
     if self[:name_suffix]
-      name << "_#{self[:name_suffix]}"
+      "#{name}_#{self[:name_suffix]}"
+    else
+      name
     end
-    name
   end
 
   def package_name
-    mac_version = Facter.fact('macosx_productversion_major').value
     name = "#{self[:name]}_#{mac_version}"
     if self[:name_suffix]
       name << "_#{self[:name_suffix]}"
@@ -164,6 +167,38 @@ class GenericBuilder
       configure
       make
       install
+    end
+  end
+end
+
+class PackageBuilder < GenericBuilder
+  def initialize(config, id=:package, group=:ruby)
+    super(config, id, group)
+  end
+
+  def package
+    package_name = config.package_name
+    sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
+    sh "mkdir -p #{File.join('destroot', config.root)}"
+    sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
+    sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{package_name}'"
+    sh 'bash -c "test -d pkg || mkdir pkg"'
+    move package_name, "pkg/#{package_name}"
+  end
+
+  def synthesize
+    sh 'test -d artifacts/ || mkdir artifacts/'
+    Dir.chdir 'pkg' do
+      packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
+      name = "crossfader_#{config.mac_version}-#{config.version}"
+      sh "productbuild --synthesize #{packages.join(' ')} #{name}.xml"
+      sh "productbuild --distribution #{name}.xml --package-path . ../artifacts/#{name}.pkg"
+    end
+  end
+
+  def link_extra_packages
+    Dir["extra_packages/#{config.mac_version}/*.pkg"].sort.each do |pkg|
+      ln pkg, 'pkg/'
     end
   end
 end
@@ -354,23 +389,28 @@ namespace :purge do
   end
 end
 
+package_builder = PackageBuilder.new(config)
 desc "Package #{config.root} into #{config.package_name}"
 task :package do
-  sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
-  sh "mkdir -p #{File.join('destroot', config.root)}"
-  sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
-  sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
-  sh 'bash -c "test -d pkg || mkdir pkg"'
-  move config.package_name, "pkg/#{config.package_name}"
+  package_builder.package
+end
+desc "Synthesize the packages"
+task :synthesize do
+  package_builder.synthesize
+end
+desc "Add extra packages to pkg/"
+task :extras do
+  package_builder.link_extra_packages
 end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
   rm_rf 'pkg'
+  rm_rf 'destroot'
+  rm_rf 'artifacts'
   # Build the crossfader runtime.  This is used for the crossfade toolset
   # itself so that end users don't accidentally delete the version the tools
   # require.
-  rm_rf 'destroot'
   sh 'git clean -fdx src/'
   sh 'git checkout HEAD src/'
   rm_rf '/opt/crossfader/runtime'
@@ -394,12 +434,11 @@ task :crossfader do
   # Crossfader tool itself.
   # FIXME
 
-  ## Synthesize the packages
-  Dir.chdir 'pkg' do
-    packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
-    sh "productbuild --synthesize #{packages.join(' ')} crossfader-#{config.version}.xml"
-    sh "productbuild --distribution crossfader-#{config.version}.xml --package-path . crossfader-#{config.version}.pkg"
-  end
+  # Link extra packages (Command Line Tools, etc...)
+  package_builder.link_extra_packages
+
+  # Synthesize the packages
+  package_builder.synthesize
 end
 
 desc "Reset the build tree"
