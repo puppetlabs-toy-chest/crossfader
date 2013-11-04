@@ -30,7 +30,6 @@ end
 
 class Configuration
   attr_reader :name
-  attr_reader :config
 
   ##
   # This is the name of this configuration instance.  This will map directly to
@@ -49,9 +48,10 @@ class Configuration
   def package_id
     name = self[:name]
     if self[:name_suffix]
-      name << "_#{self[:name_suffix]}"
+      "#{name}_#{self[:name_suffix]}"
+    else
+      name
     end
-    name
   end
 
   def package_name
@@ -173,13 +173,14 @@ class PackageBuilder < GenericBuilder
     super(config, id, group)
   end
 
-  def build
+  def package
+    package_name = config.package_name
     sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
     sh "mkdir -p #{File.join('destroot', config.root)}"
     sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
-    sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
+    sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{package_name}'"
     sh 'bash -c "test -d pkg || mkdir pkg"'
-    move config.package_name, "pkg/#{config.package_name}"
+    move package_name, "pkg/#{package_name}"
   end
 
   def synthesize
@@ -381,7 +382,7 @@ end
 package_builder = PackageBuilder.new(config)
 desc "Package #{config.root} into #{config.package_name}"
 task :package do
-  package_builder.build
+  package_builder.package
 end
 desc "Synthesize the packages"
 task :synthesize do
