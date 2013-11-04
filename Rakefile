@@ -347,6 +347,8 @@ task :package do
   sh "mkdir -p #{File.join('destroot', config.root)}"
   sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
   sh "pkgbuild --identifier com.puppetlabs.#{config[:name]} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
+  sh 'bash -c "test -d pkg || mkdir pkg"'
+  move config.package_name, "pkg/#{config.package_name}"
 end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
