@@ -187,11 +187,12 @@ class PackageBuilder < GenericBuilder
   end
 
   def synthesize
+    sh 'test -d artifacts/ || mkdir artifacts/'
     Dir.chdir 'pkg' do
       packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
       name = "crossfader_#{config.mac_version}-#{config.version}"
       sh "productbuild --synthesize #{packages.join(' ')} #{name}.xml"
-      sh "productbuild --distribution #{name}.xml --package-path . #{name}.pkg"
+      sh "productbuild --distribution #{name}.xml --package-path . ../artifacts/#{name}.pkg"
     end
   end
 
@@ -405,10 +406,11 @@ end
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
   rm_rf 'pkg'
+  rm_rf 'destroot'
+  rm_rf 'artifacts'
   # Build the crossfader runtime.  This is used for the crossfade toolset
   # itself so that end users don't accidentally delete the version the tools
   # require.
-  rm_rf 'destroot'
   sh 'git clean -fdx src/'
   sh 'git checkout HEAD src/'
   rm_rf '/opt/crossfader/runtime'
