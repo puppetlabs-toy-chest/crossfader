@@ -168,6 +168,29 @@ class GenericBuilder
   end
 end
 
+class PackageBuilder < GenericBuilder
+  def initialize(config, id=:package, group=:ruby)
+    super(config, id, group)
+  end
+
+  def build
+    sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
+    sh "mkdir -p #{File.join('destroot', config.root)}"
+    sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
+    sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
+    sh 'bash -c "test -d pkg || mkdir pkg"'
+    move config.package_name, "pkg/#{config.package_name}"
+  end
+
+  def synthesize
+    Dir.chdir 'pkg' do
+      packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
+      sh "productbuild --synthesize #{packages.join(' ')} crossfader-#{config.version}.xml"
+      sh "productbuild --distribution crossfader-#{config.version}.xml --package-path . crossfader-#{config.version}.pkg"
+    end
+  end
+end
+
 class OpenSSLBuilder < GenericBuilder
   def initialize(config, id=:openssl, group=:ruby)
     super(config, id, group)
@@ -354,14 +377,14 @@ namespace :purge do
   end
 end
 
+package_builder = PackageBuilder.new(config)
 desc "Package #{config.root} into #{config.package_name}"
 task :package do
-  sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
-  sh "mkdir -p #{File.join('destroot', config.root)}"
-  sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
-  sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
-  sh 'bash -c "test -d pkg || mkdir pkg"'
-  move config.package_name, "pkg/#{config.package_name}"
+  package_builder.build
+end
+desc "Synthesize the packages"
+task :synthesize do
+  package_builder.synthesize
 end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
@@ -394,12 +417,8 @@ task :crossfader do
   # Crossfader tool itself.
   # FIXME
 
-  ## Synthesize the packages
-  Dir.chdir 'pkg' do
-    packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
-    sh "productbuild --synthesize #{packages.join(' ')} crossfader-#{config.version}.xml"
-    sh "productbuild --distribution crossfader-#{config.version}.xml --package-path . crossfader-#{config.version}.pkg"
-  end
+  # Synthesize the packages
+  package_builder.synthesize
 end
 
 desc "Reset the build tree"
