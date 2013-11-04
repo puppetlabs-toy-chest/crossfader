@@ -353,11 +353,12 @@ end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
-
+  rm_rf 'pkg'
   # Each Ruby Configuration
-  Dir["config/crossfader_*.yaml"].each do |crossfader_config|
+  Dir["config/crossfader_*.yaml"].sort.each do |crossfader_config|
     rm_rf 'destroot'
     sh 'git clean -fdx src/'
+    sh 'git checkout HEAD src/'
     Dir["/opt/crossfader/*"].each do |dir|
       rm_rf dir
     end
