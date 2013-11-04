@@ -433,7 +433,9 @@ task :crossfader do
   # FIXME
 
   # Link extra packages (Command Line Tools, etc...)
-  package_builder.link_extra_packages
+  # FIXME It seems to be a bad idea to the link the extra packages since
+  # removing /opt/crossfader affects the build system in some weird way.
+  # package_builder.link_extra_packages
 
   # Synthesize the packages
   package_builder.synthesize
