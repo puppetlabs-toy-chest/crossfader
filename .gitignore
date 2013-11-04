@@ -1,4 +1,4 @@
 destroot/
-*.pkg
+pkg/
 .bundle/
 Gemfile.lock
