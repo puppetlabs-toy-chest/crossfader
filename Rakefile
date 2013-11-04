@@ -359,7 +359,7 @@ task :package do
   sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
   sh "mkdir -p #{File.join('destroot', config.root)}"
   sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
-  sh "pkgbuild --identifier com.puppetlabs.#{config[:name]} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
+  sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
   sh 'bash -c "test -d pkg || mkdir pkg"'
   move config.package_name, "pkg/#{config.package_name}"
 end
@@ -367,17 +367,28 @@ end
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
   rm_rf 'pkg'
+  # Build the crossfader runtime.  This is used for the crossfade toolset
+  # itself so that end users don't accidentally delete the version the tools
+  # require.
+  rm_rf 'destroot'
+  sh 'git clean -fdx src/'
+  sh 'git checkout HEAD src/'
+  rm_rf '/opt/crossfader/runtime'
+  sh "bundle exec rake PVM_CONFIG=crossfaderuntime build"
+  sh "bundle exec rake PVM_CONFIG=crossfaderuntime package"
+
   # Each Ruby Configuration
-  Dir["config/crossfader_*.yaml"].sort.each do |crossfader_config|
+  Dir["config/crossfader_*.yaml"].sort.each do |crossfader_config_file|
+    path = Pathname.new(crossfader_config_file)
+    config_name = path.basename('.yaml')
+    crossfader_config = Configuration.new(config_name)
+
     rm_rf 'destroot'
     sh 'git clean -fdx src/'
     sh 'git checkout HEAD src/'
-    Dir["/opt/crossfader/*"].each do |dir|
-      rm_rf dir
-    end
-    path = Pathname.new(crossfader_config)
-    sh "bundle exec rake PVM_CONFIG=#{path.basename('.yaml')} build"
-    sh "bundle exec rake PVM_CONFIG=#{path.basename('.yaml')} package"
+    rm_rf crossfader_config.root
+    sh "bundle exec rake PVM_CONFIG=#{config_name} build"
+    sh "bundle exec rake PVM_CONFIG=#{config_name} package"
   end
 
   # Crossfader tool itself.
