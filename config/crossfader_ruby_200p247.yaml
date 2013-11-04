@@ -1,0 +1,18 @@
+---
+:root: /opt/crossfader/versions
+:root_is_prefix: false
+:name: crossfader
+:name_suffix: ruby_200p247
+:ruby:
+  :src: src/ruby-2.0.0-p247
+  :version: 2.0.0-p247
+:openssl:
+  :src: src/openssl-1.0.1e
+:zlib:
+  :src: src/zlib-1.2.7
+:yaml:
+  :src: src/yaml-0.1.4
+:ffi:
+  :src: src/libffi-3.0.11
+:autoconf:
+  :src: src/autoconf-2.68

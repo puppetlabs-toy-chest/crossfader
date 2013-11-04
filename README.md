@@ -1,48 +1,57 @@
 Overview
 ====
 
-Puppet Version Manager (identified as `puppet_version_manager`) is intended to
-minimize the disruption that comes along with running multiple versions of
-Puppet.  Specifically, it should be no problem whatsoever to switch between two
-arbitrary versions of Puppet.
+Crossfader provides pre-compiled, packaged versions of Ruby and a command line
+tool to easily switch between them.  This project aims to solve many of the
+same problems [Ruby Version Manager][rvm] and [rbenv][rbenv] aim to solve, but
+in a different manner building upon pre-compiled packages and a simple command
+line rubygem.
 
-This capability makes it possible to eliminate much of the risk associated with
-trying out new versions of Puppet.  This, in turn, allows Puppet Labs to make
-incompatible changes at a high frequency.
+Why Crossfader?
+====
+
+We built Crossfader at Puppet Labs to address a number of problems:
+
+ * It takes a long time for newly hired developers to build their toolchain
+   from source.  Installing from packages is faster than compiling.
+ * Developers had divergent tool chains since they were built at different
+   times in different ways.  Installing from packages is more consistent.
+ * Developers have to maintain their own toolchain which takes time from
+   their primary goals.  Installing from packages makes it easier to maintain
+   an updated system.
+
 
 Quick Start
 ====
 
-To build all configured versions of Ruby and install bundler into the gemset
-named bundler, execute the following:
+This repository is a build system composed of rake tasks.  The system produces
+the crossfader packages in `pkg/`.  First, clone this project into a build
+workspace.
 
-    for i in config/*.yaml
-    do
-      c=${i##*/}
-      c=${c%%.yaml}
-      git reset --hard HEAD
-      git clean -fdx
-      echo Building $c
-      PVM_CONFIG=$c rake build
-      PVM_CONFIG=$c rake install:gems
-    done
+Install the dependencies into the local project:
 
-This sequence will fully rebuild ruby and all of the dependencies for each ruby
-configuration listed.
+    bundle install --path .
 
-Once the build finishes, a package may be created using:
+To build all of the packages that compose the distribution, use the `rake
+crossfader` task.  This task builds the crossfader runtime in
+`/opt/crossfader/runtime/bin` then iterates over the
+`config/crossfader_*.yaml`, building each one with a prefix of
+`/opt/crossfader/versions/<interpreter>/<version>`, for example
+`/opt/crossfader/versions/ruby/1.9.3p448/bin/ruby`.
 
-    rake package
+    bundle exec rake crossfader
+
+Individual builds
 
 This package will install into the system and is usable from a shell
 environment.  For example:
 
-    eval "$(/opt/pvm/versions/bin/pvm shellinit)"
+    eval "$(/opt/crossfader/bin/crossfader shellinit)"
 
 This could be added to the shell initialization files.  For example, in
 `~/.zshrc`:
 
-    echo '[ -x /opt/pvm/versions/bin/pvm ] && eval "$(/opt/pvm/versions/bin/pvm shellinit)"' >> ~/.zshrc
+    echo '[ -x /opt/crossfader/bin/crossfader ] && eval "$(/opt/crossfader/bin/crossfader shellinit)"' >> ~/.zshrc
 
 Related Work
 ====
@@ -53,107 +62,3 @@ and [Python Virtual Env][virtualenv].
 [rbenv]: https://github.com/sstephenson/rbenv
 [rvm]: https://rvm.io/
 [virtualenv]: https://github.com/pypa/virtualenv/
-
-Filesystem Layout
-====
-
-The overall strategy is to reorganize the entire system to eliminate all
-roadblocks to running multiple versions of Puppet on the same host.
-
-`=>` denotes linked library dependencies for Mac OS X as an example.
-
-    /opt/puppet/versions/mri/1.9.3-p194/bin/ruby
-      => /usr/lib/libSystem.B.dylib
-      => /usr/lib/libobjc.A.dylib
-    /opt/puppet/versions/mri/1.8.7-p358
-
-Known Dependencies
-====
-
-This section is just a checklist of required dependencies we need to make sure
-we're managing in an effective way.  The absolute paths in these examples are
-only a starting point.  We take as much control of dependent software versions
-as is necessary while being mindful of the cost of managing these dependencies.
-
-MRI Ruby 1.9.3
-----
-
- * `psych` => `/Users/jeff/.rbenv/versions/1.9.3-p194/lib/libyaml-0.2.dylib`
- * `openssl` => `/opt/local/lib/lib{ssl,crypto}.1.0.0.dylib` (OpenSSL 1.0.1c)
- * `md5`, `sha1`, `sha2`, `rmd160` => `/opt/local/lib/libcrypto.1.0.0.dylib`
-   (OpenSSL 1.0.1c)
- * `fiddle` => `/opt/local/lib/libffi.6.dylib`
- * `zlib` => `/usr/lib/libz.1.dylib`
- * `curses` => `/usr/lib/libncurses.5.4.dylib`
- * `readline` => `/usr/lib/libncurses.5.4.dylib`, `/usr/lib/libedit.3.dylib`
- * `iconv` => `/usr/lib/libiconv.2.dylib`
- * `pty` => `/usr/lib/libutil.dylib`
- * `tcltk` => Lots of stuff in `/System/Library/Frameworks` (Omit?)
-
-Current Status
-====
-
-After installing Ruby 1.9.3-p327, basic gemsets are possible by simply using
-the `GEM_HOME` and `GEM_PATH` environment variables.  I currently set these to
-named folders inside of the `gemsets` directory of the runtime.  For example:
-
-First, install the global gems:
-
-    export GEM_HOME=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/global
-    gem install rake
-
-Next, install the gems specific to your activity.  In general, development
-activities have a lot more dependencies than runtime dependencies.  This
-organization scheme is very similar to a Bundler bundle.
-
-    PATH=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/global/bin:$PATH
-    PATH=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/dev/bin:$PATH
-    PATH=/opt/puppet/versions/ruby/1.9.3-p327/bin:$PATH
-    GEM_PATH=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/global
-    GEM_HOME=/opt/puppet/versions/ruby/1.9.3-p327/gemsets/dev
-    export PATH GEM_PATH GEM_HOME
-
-Then install the Puppet dependencies:
-
-    gem install rspec -v '~> 2.10.0'
-    gem install mocha -v '~> 0.10.0'
-    gem install json  -v 1.5.4
-    gem install rack  -v 1.4.1
-
-And other nice to have tools:
-
-    gem install hub yard pry watchr wirb irbtools terminal-notifier
-
-And we can see the specific locations load properly using only `GEM_HOME` and
-`GEM_PATH`.
-
-    $ gem which rake
-    /opt/puppet/versions/ruby/1.9.3-p327/lib/ruby/1.9.1/rake.rb
-    $ gem which rspec
-    /opt/puppet/versions/ruby/1.9.3-p327/gemsets/dev/gems/rspec-2.10.0/lib/rspec.rb
-
-With all of these Gems installed, we now have a complete set of tools to run
-the example behavior suite:
-
-    RUBYLIB=/workspace/puppet/src/hiera/lib
-    RUBYLIB=/workspace/puppet/src/facter/lib:$RUBYLIB
-    RUBYLIB=/workspace/puppet/src/puppet/lib:$RUBYLIB
-    export RUBYLIB
-
-    $ cd puppet
-    $ rake spec
-
-Shell Integration
-====
-
-Integration with the shell is provided using the `pvm` command.  This
-executable behaves like `ssh-agent` and prints out SH compatible code suitable
-for evaluation directly in the shell process.
-
-    $ which ruby
-    /usr/bin/ruby
-    $ eval `/opt/puppet/versions/bin/pvm`
-    (1.9.3-p327 dev)$ which ruby
-    /opt/puppet/versions/ruby/1.9.3-p327/bin/ruby
-
-EOF

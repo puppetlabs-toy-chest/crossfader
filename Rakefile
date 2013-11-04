@@ -2,12 +2,15 @@ require 'rake'
 require 'fileutils'
 require 'pathname'
 require 'yaml'
+require 'facter'
 
 desc "Show the list of tasks (rake -T)"
 task :help do
   sh "rake -T"
 end
 task :default => :help
+
+class ConfigurationError < StandardError; end
 
 ##
 # configname determines which configuration file will be read from
@@ -36,6 +39,29 @@ class Configuration
     @name = name
     @config_file = File.join(File.dirname(__FILE__), "config/#{name}.yaml")
     config_reset
+    version
+  end
+
+  def version
+    @version ||= `git describe --always`.chomp
+  end
+
+  def package_id
+    name = self[:name]
+    if self[:name_suffix]
+      name << "_#{self[:name_suffix]}"
+    end
+    name
+  end
+
+  def package_name
+    mac_version = Facter.fact('macosx_productversion_major').value
+    name = "#{self[:name]}_#{mac_version}"
+    if self[:name_suffix]
+      name << "_#{self[:name_suffix]}"
+    end
+    raise ConfigurationError, "no :name key in configuration #{@config_file}" unless name
+    "#{name}-#{self.version}.pkg"
   end
 
   ##
@@ -96,7 +122,7 @@ end
 # In particular, the `build` method provides a public API to compile a generic
 # C application like zlib.
 class GenericBuilder
-  # include Rake::FileUtilsExt
+  include Rake::FileUtilsExt
   attr_reader :config
   attr_reader :id
   attr_reader :group
@@ -193,11 +219,38 @@ class RubyBuilder < GenericBuilder
   end
 end
 
+##
+# Custom Tasks
+def unpack(name, src, dest, *args)
+  args || args = []
+  args.insert 0, name
+
+  body = proc {
+    FileList[src].each do |f|
+      file = File.basename(f)
+      puts "Unpacking #{file} in #{dest}"
+      Dir.chdir dest do
+        sh "tar -xjf #{file}"
+      end
+    end
+  }
+  Rake::Task.define_task(*args, &body)
+end
+
+##
+# Unpack ruby instead of committing it to the source tree because I noticed
+# we're getting missing encodings and it seems like we're not the only ones
+# according to
+# http://www.pressingquestion.com/4210120/What-Causes-A-Encodingconverter
+namespace :unpack do
+  unpack :ruby, "#{config[:ruby][:src]}.tar.bz2", "src/"
+  unpack :openssl, "#{config[:openssl][:src]}.tar.bz2", "src/"
+end
 
 ##
 # File dependencies
 openssl = OpenSSLBuilder.new(config)
-file "#{openssl.prefix}/bin/openssl" => ["build:zlib"] do
+file "#{openssl.prefix}/bin/openssl" => ["unpack:openssl", "build:zlib"] do
   openssl.build
 end
 
@@ -222,7 +275,7 @@ file "#{autoconf.prefix}/bin/autoconf" do
 end
 
 ruby = RubyBuilder.new(config)
-file "#{ruby.prefix}/bin/ruby" => ["build:ffi", "build:zlib", "build:yaml", "build:openssl", "build:autoconf"] do
+file "#{ruby.prefix}/bin/ruby" => ["unpack:ruby", "build:ffi", "build:zlib", "build:yaml", "build:openssl", "build:autoconf"] do
   ruby.build
 end
 
@@ -285,20 +338,82 @@ namespace "uninstall" do
   end
 end
 
-desc "Build all of the things"
+desc "Build all of the things (PVM_CONFIG=#{configname})"
 task :build => ["build:openssl", "build:yaml", "build:ffi", "build:ruby"] do
   puts "All Done!"
 end
 
-desc "Purge #{config.root}"
-task :purge do
-  rm_rf config.root
+namespace :purge do
+  desc "Purge #{config.root}"
+  task :root do
+    rm_rf config.root
+  end
+  desc "Purge destroot/"
+  task :destroot do
+    rm_rf 'destroot/'
+  end
 end
 
-desc "Package #{config.root}"
+desc "Package #{config.root} into #{config.package_name}"
 task :package do
   sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
   sh "mkdir -p #{File.join('destroot', config.root)}"
   sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
-  sh "pkgbuild --identifier com.puppetlabs.pvm --root destroot --ownership recommended --version 0.0.1 'Puppet Version Manager.pkg'"
+  sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{config.package_name}'"
+  sh 'bash -c "test -d pkg || mkdir pkg"'
+  move config.package_name, "pkg/#{config.package_name}"
+end
+
+desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
+task :crossfader do
+  rm_rf 'pkg'
+  # Build the crossfader runtime.  This is used for the crossfade toolset
+  # itself so that end users don't accidentally delete the version the tools
+  # require.
+  rm_rf 'destroot'
+  sh 'git clean -fdx src/'
+  sh 'git checkout HEAD src/'
+  rm_rf '/opt/crossfader/runtime'
+  sh "bundle exec rake PVM_CONFIG=crossfaderuntime build"
+  sh "bundle exec rake PVM_CONFIG=crossfaderuntime package"
+
+  # Each Ruby Configuration
+  Dir["config/crossfader_*.yaml"].sort.each do |crossfader_config_file|
+    path = Pathname.new(crossfader_config_file)
+    config_name = path.basename('.yaml')
+    crossfader_config = Configuration.new(config_name)
+
+    rm_rf 'destroot'
+    sh 'git clean -fdx src/'
+    sh 'git checkout HEAD src/'
+    rm_rf crossfader_config.root
+    sh "bundle exec rake PVM_CONFIG=#{config_name} build"
+    sh "bundle exec rake PVM_CONFIG=#{config_name} package"
+  end
+
+  # Crossfader tool itself.
+  # FIXME
+
+  ## Synthesize the packages
+  Dir.chdir 'pkg' do
+    packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
+    sh "productbuild --synthesize #{packages.join(' ')} crossfader-#{config.version}.xml"
+    sh "productbuild --distribution crossfader-#{config.version}.xml --package-path . crossfader-#{config.version}.pkg"
+  end
+end
+
+desc "Reset the build tree"
+task :reset do
+  rm_rf "destroot"
+  Dir["#{config.root}/*"].each do |d|
+    rm_rf d
+  end
+  sh 'git clean -fdx src'
+end
+
+namespace :print do
+  desc "Print the package name for this configuration"
+  task :package_name do
+    puts config.package_name
+  end
 end
