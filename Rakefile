@@ -369,6 +369,13 @@ task :crossfader do
 
   # Crossfader tool itself.
   # FIXME
+
+  ## Synthesize the packages
+  Dir.chdir 'pkg' do
+    packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
+    sh "productbuild --synthesize #{packages.join(' ')} crossfader-#{config.version}.xml"
+    sh "productbuild --distribution crossfader-#{config.version}.xml --package-path . crossfader-#{config.version}.pkg"
+  end
 end
 
 desc "Reset the build tree"
