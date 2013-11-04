@@ -194,6 +194,12 @@ class PackageBuilder < GenericBuilder
       sh "productbuild --distribution #{name}.xml --package-path . #{name}.pkg"
     end
   end
+
+  def link_extra_packages
+    Dir["extra_packages/#{config.mac_version}/*.pkg"].sort.each do |pkg|
+      ln pkg, 'pkg/'
+    end
+  end
 end
 
 class OpenSSLBuilder < GenericBuilder
@@ -391,6 +397,10 @@ desc "Synthesize the packages"
 task :synthesize do
   package_builder.synthesize
 end
+desc "Add extra packages to pkg/"
+task :extras do
+  package_builder.link_extra_packages
+end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
@@ -421,6 +431,9 @@ task :crossfader do
 
   # Crossfader tool itself.
   # FIXME
+
+  # Link extra packages (Command Line Tools, etc...)
+  package_builder.link_extra_packages
 
   # Synthesize the packages
   package_builder.synthesize
