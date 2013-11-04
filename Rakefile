@@ -2,6 +2,7 @@ require 'rake'
 require 'fileutils'
 require 'pathname'
 require 'yaml'
+require 'facter'
 
 desc "Show the list of tasks (rake -T)"
 task :help do
@@ -45,10 +46,22 @@ class Configuration
     @version ||= `git describe --always`.chomp
   end
 
-  def package_name
+  def package_id
     name = self[:name]
+    if self[:name_suffix]
+      name << "_#{self[:name_suffix]}"
+    end
+    name
+  end
+
+  def package_name
+    mac_version = Facter.fact('macosx_productversion_major').value
+    name = "#{self[:name]}_#{mac_version}"
+    if self[:name_suffix]
+      name << "_#{self[:name_suffix]}"
+    end
     raise ConfigurationError, "no :name key in configuration #{@config_file}" unless name
-    "#{self[:name]}-#{self.version}.pkg"
+    "#{name}-#{self.version}.pkg"
   end
 
   ##

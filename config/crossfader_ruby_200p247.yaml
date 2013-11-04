@@ -1,7 +1,8 @@
 ---
 :root: /opt/crossfader/versions
 :root_is_prefix: false
-:name: crossfader_ruby_200p247_1
+:name: crossfader
+:name_suffix: ruby_200p247
 :ruby:
   :src: src/ruby-2.0.0-p247
   :version: 2.0.0-p247

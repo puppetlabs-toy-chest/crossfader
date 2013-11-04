@@ -1,7 +1,8 @@
 ---
 :root: /opt/crossfader/versions
 :root_is_prefix: false
-:name: crossfader_ruby_193p448_1
+:name: crossfader
+:name_suffix: ruby_193p448
 :ruby:
   :src: src/ruby-1.9.3-p448
   :version: 1.9.3-p448

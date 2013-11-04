@@ -6,6 +6,7 @@ gem 'json'
 
 platforms :ruby do
   gem 'pry', :group => :development
+  gem 'facter', :group => :development
   gem 'gimli', :group => :development
   gem 'github-markdown', :group => :development
 end
