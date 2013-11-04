@@ -45,6 +45,10 @@ class Configuration
     @version ||= `git describe --always`.chomp
   end
 
+  def mac_version
+    @mac_version ||= Facter.fact('macosx_productversion_major').value
+  end
+
   def package_id
     name = self[:name]
     if self[:name_suffix]
@@ -55,7 +59,6 @@ class Configuration
   end
 
   def package_name
-    mac_version = Facter.fact('macosx_productversion_major').value
     name = "#{self[:name]}_#{mac_version}"
     if self[:name_suffix]
       name << "_#{self[:name_suffix]}"
@@ -184,11 +187,11 @@ class PackageBuilder < GenericBuilder
   end
 
   def synthesize
-    mac_version = Facter.fact('macosx_productversion_major').value
     Dir.chdir 'pkg' do
       packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
-      sh "productbuild --synthesize #{packages.join(' ')} crossfader-#{config.version}.xml"
-      sh "productbuild --distribution crossfader-#{config.version}.xml --package-path . crossfader_#{mac_version}-#{config.version}.pkg"
+      name = "crossfader_#{config.mac_version}-#{config.version}"
+      sh "productbuild --synthesize #{packages.join(' ')} #{name}.xml"
+      sh "productbuild --distribution #{name}.xml --package-path . #{name}.pkg"
     end
   end
 end
