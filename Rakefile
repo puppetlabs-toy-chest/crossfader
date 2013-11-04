@@ -183,10 +183,11 @@ class PackageBuilder < GenericBuilder
   end
 
   def synthesize
+    mac_version = Facter.fact('macosx_productversion_major').value
     Dir.chdir 'pkg' do
       packages = Dir["*.pkg"].collect() {|p| ['--package', p] }.flatten
       sh "productbuild --synthesize #{packages.join(' ')} crossfader-#{config.version}.xml"
-      sh "productbuild --distribution crossfader-#{config.version}.xml --package-path . crossfader-#{config.version}.pkg"
+      sh "productbuild --distribution crossfader-#{config.version}.xml --package-path . crossfader_#{mac_version}-#{config.version}.pkg"
     end
   end
 end
