@@ -417,14 +417,21 @@ task :crossfader do
   rm_rf 'pkg'
   rm_rf 'destroot'
   rm_rf 'artifacts'
+
   # Build the crossfader runtime.  This is used for the crossfade toolset
   # itself so that end users don't accidentally delete the version the tools
   # require.
   sh %{git clean -fdx src/}
   sh %{git checkout HEAD src/}
   rm_rf '/opt/crossfader/runtime'
-  sh %{bundle exec rake CONFIG=crossfaderuntime build}
-  sh %{bundle exec rake CONFIG=crossfaderuntime package}
+
+  sh %{rake CONFIG=crossfaderuntime build}
+  sh %{rake CONFIG=crossfaderuntime package}
+
+  # Crossfader tool itself.
+  rm_rf "/opt/crossfader/runtime/gemsets/crossfader"
+  package_builder.install_gems
+  package_builder.package_gemsets
 
   # Each Ruby Configuration
   Dir["config/crossfader_*.yaml"].sort.each do |crossfader_config_file|
@@ -436,15 +443,9 @@ task :crossfader do
     sh %{git clean -fdx src/}
     sh %{git checkout HEAD src/}
     rm_rf crossfader_config.root
-    sh %{bundle exec rake CONFIG=#{config_name} build}
-    sh %{bundle exec rake CONFIG=#{config_name} package}
+    sh %{rake CONFIG=#{config_name} build}
+    sh %{rake CONFIG=#{config_name} package}
   end
-
-  # Crossfader tool itself.
-  # FIXME
-  rm_rf "/opt/crossfader/runtime/gemsets/crossfader"
-  package_builder.install_gems
-  package_builder.package_gemsets
 
   # Link extra packages (Command Line Tools, etc...)
   package_builder.link_extra_packages
