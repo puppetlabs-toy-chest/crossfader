@@ -15,13 +15,13 @@ class ConfigurationError < StandardError; end
 ##
 # configname determines which configuration file will be read from
 # `config/<configname>.yaml`.  The default is "master" and can be overridden
-# with the PVM_CONFIG environment variable.
+# with the CONFIG environment variable.
 #
 # @api public
 #
 # @return [String] "master" is the default
 def configname
-  ENV['PVM_CONFIG'] || "master"
+  ENV['CONFIG'] || "master"
 end
 
 def config
@@ -368,30 +368,8 @@ end
 
 directory "#{config.root}"
 directory "#{config.root}/bin"
-file "#{config.root}/bin/pvm" => ["#{config.root}/bin", "uninstall:pvm"] do
-  sh "cp bin/pvm #{config.root}/bin/pvm"
-  sh "chmod 755 #{config.root}/bin/pvm"
-end
 
-namespace "install" do
-  desc "Install pvm script (#{config.root}/bin/pvm)"
-  task :pvm => ["#{config.root}/bin/pvm"]
-
-  desc "Install default gems"
-  task :gems => ["#{config.root}/bin/pvm"] do
-    sh "bash -c 'PVM_GEMSET=bundler PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm exec gem install bundler --no-rdoc'"
-    sh "bash -c 'PVM_GEMSET=pvm PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm exec gem install trollop --no-rdoc'"
-  end
-end
-
-namespace "uninstall" do
-  desc "Remove pvm script (#{config.root}/bin/pvm)"
-  task :pvm do
-    sh "rm -f #{config.root}/bin/pvm"
-  end
-end
-
-desc "Build all of the things (PVM_CONFIG=#{configname})"
+desc "Build all of the things (CONFIG=#{configname})"
 task :build => ["build:openssl", "build:yaml", "build:ffi", "build:ruby"] do
   puts "All Done!"
 end
@@ -433,11 +411,11 @@ task :crossfader do
   # Build the crossfader runtime.  This is used for the crossfade toolset
   # itself so that end users don't accidentally delete the version the tools
   # require.
-  sh 'git clean -fdx src/'
-  sh 'git checkout HEAD src/'
+  sh %{git clean -fdx src/}
+  sh %{git checkout HEAD src/}
   rm_rf '/opt/crossfader/runtime'
-  sh "bundle exec rake PVM_CONFIG=crossfaderuntime build"
-  sh "bundle exec rake PVM_CONFIG=crossfaderuntime package"
+  sh %{bundle exec rake CONFIG=crossfaderuntime build}
+  sh %{bundle exec rake CONFIG=crossfaderuntime package}
 
   # Each Ruby Configuration
   Dir["config/crossfader_*.yaml"].sort.each do |crossfader_config_file|
@@ -446,11 +424,11 @@ task :crossfader do
     crossfader_config = Configuration.new(config_name)
 
     rm_rf 'destroot'
-    sh 'git clean -fdx src/'
-    sh 'git checkout HEAD src/'
+    sh %{git clean -fdx src/}
+    sh %{git checkout HEAD src/}
     rm_rf crossfader_config.root
-    sh "bundle exec rake PVM_CONFIG=#{config_name} build"
-    sh "bundle exec rake PVM_CONFIG=#{config_name} package"
+    sh %{bundle exec rake CONFIG=#{config_name} build}
+    sh %{bundle exec rake CONFIG=#{config_name} package}
   end
 
   # Crossfader tool itself.
