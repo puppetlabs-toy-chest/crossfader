@@ -8,10 +8,10 @@ Gem::Specification.new do |spec|
   spec.version       = Crossfader::VERSION
   spec.authors       = ["Jeff McCune"]
   spec.email         = ["jeff@puppetlabs.com"]
-  spec.description   = %q{TODO: Write a gem description}
-  spec.summary       = %q{TODO: Write a gem summary}
-  spec.homepage      = ""
-  spec.license       = "MIT"
+  spec.description   = %q{Easily develop on multiple runtimes and gemsets}
+  spec.summary       = %q{Crossfader is a development tool to manage multiple ruby versions and gemsets}
+  spec.homepage      = "https://github.com/puppetlabs/crossfader"
+  spec.license       = "Apache 2.0"
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
