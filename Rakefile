@@ -186,6 +186,24 @@ class PackageBuilder < GenericBuilder
     move package_name, "pkg/#{package_name}"
   end
 
+  def package_gemsets
+    package_name = "crossfader_#{config.mac_version}_runtime_gems-#{config.version}.pkg"
+    package_id = "crossfader_runtime_gems"
+    root = "/opt/crossfader/runtime/gemsets/crossfader"
+
+    sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
+    sh "mkdir -p #{File.join('destroot', root)}"
+    sh "rsync -axH #{root}/ #{File.join('destroot', root)}/"
+    sh "pkgbuild --identifier com.puppetlabs.#{package_id} --root destroot --ownership recommended --version #{config.version} '#{package_name}'"
+    sh 'bash -c "test -d pkg || mkdir pkg"'
+    move package_name, "pkg/#{package_name}"
+  end
+
+  def install_gems
+    sh "./bin/xfade-run exec gem install bundler -v 1.3.5 --no-ri --no-rdoc"
+    # FIXME Install the bundle for the crossfader gem
+  end
+
   def synthesize
     sh 'test -d artifacts/ || mkdir artifacts/'
     Dir.chdir 'pkg' do
@@ -402,6 +420,10 @@ desc "Add extra packages to pkg/"
 task :extras do
   package_builder.link_extra_packages
 end
+desc "Package /opt/crossfader/runtime/gemsets/crossfader"
+task :package_gemsets do
+  package_builder.package_gemsets
+end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
@@ -433,6 +455,9 @@ task :crossfader do
 
   # Crossfader tool itself.
   # FIXME
+  rm_rf "/opt/crossfader/runtime/gemsets/crossfader"
+  package_builder.install_gems
+  package_builder.package_gemsets
 
   # Link extra packages (Command Line Tools, etc...)
   package_builder.link_extra_packages
