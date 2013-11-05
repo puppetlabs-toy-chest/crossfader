@@ -190,18 +190,26 @@ class PackageBuilder < GenericBuilder
     package_name = "crossfader_#{config.mac_version}_runtime_gems-#{config.version}.pkg"
     package_id = "crossfader_runtime_gems"
     root = "/opt/crossfader/runtime/gemsets/crossfader"
+    bin = "/opt/crossfader/bin"
 
     sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
     sh "mkdir -p #{File.join('destroot', root)}"
     sh "rsync -axH #{root}/ #{File.join('destroot', root)}/"
+    sh "mkdir -p #{File.join('destroot', bin)}"
+    sh "rsync -axH #{bin}/ #{File.join('destroot', bin)}/"
+
     sh "pkgbuild --identifier com.puppetlabs.#{package_id} --root destroot --ownership recommended --version #{config.version} '#{package_name}'"
     sh 'bash -c "test -d pkg || mkdir pkg"'
     move package_name, "pkg/#{package_name}"
   end
 
   def install_gems
+    bin = "/opt/crossfader/bin"
     sh "./bin/xfade-run exec gem install bundler -v 1.3.5 --no-ri --no-rdoc"
-    # FIXME Install the bundle for the crossfader gem
+    # Here is the main entry point from the end-user perspective
+    # FIXME: This should probably be a proper gem instead of a single file.
+    sh "test -d #{bin} || mkdir -p #{bin}"
+    FileUtils.install "crossfader/bin/crossfader", "#{bin}/crossfader", :mode => 0755, :verbose => true
   end
 
   def synthesize
@@ -400,6 +408,7 @@ task :extras do
 end
 desc "Package /opt/crossfader/runtime/gemsets/crossfader"
 task :package_gemsets do
+  package_builder.install_gems
   package_builder.package_gemsets
 end
 

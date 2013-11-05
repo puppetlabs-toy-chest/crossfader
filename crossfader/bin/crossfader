@@ -1,3 +1,229 @@
-#!/usr/bin/env ruby
+#! /opt/crossfader/runtime/bin/ruby
+#
+if ENV['GEM_HOME']
+  ENV['GEM_HOME_OLD'] = ENV['GEM_HOME']
+end
+if ENV['GEM_PATH']
+  ENV['GEM_PATH_OLD'] = ENV['GEM_PATH']
+end
 
-require 'crossfader'
+ENV['GEM_HOME'] = '/opt/backline/gemsets/backline/ruby/1.9.1'
+ENV['GEM_PATH'] = '/opt/backline/gemsets/global/ruby/1.9.1:/opt/backline/lib/ruby/gems/1.9.1'
+
+require 'rubygems'
+require 'trollop'
+require 'json'
+
+module Backline
+  VERSION = '1.2.4'
+end
+
+class Application
+  attr_reader :env, :argv, :opts, :home, :environment
+
+  def initialize(opts = {})
+    @env = opts[:env] || ENV.to_hash
+    @argv = opts[:argv] || ARGV.dup
+    @home = opts[:home] || '/opt/backline'
+    parse_options!
+  end
+
+  def parse_options!
+    @opts = Trollop.options(argv) do
+      stop_on_unknown
+      version "backline #{Backline::VERSION} (c) 2013 Puppet Labs"
+          banner <<-EOBANNER
+usage: backline [GLOBAL OPTIONS] COMMAND [ARGS]
+Commands:
+   exec       Execute a system command (exec puppet --version)
+   list       List available gemsets
+   puppet     Run Puppet with backline environment confdir and vardir
+   setup      Setup backline compoments (master)
+   shellinit  Generate bourne shell commands on stdout.
+
+Quick Start:
+Add this line to your shell initialization scripts.
+
+    eval "$(/opt/backline/bin/backline shellinit)"
+
+Gemsets:
+To install a gem into a specific gemset:
+
+    $ sudo /opt/backline/bin/backline --gemset=puppet \
+        exec gem install puppet
+
+Environment:
+In an effort to avoid large command line argument lists, some options will take
+their default value from the environment.  If an option lists an environment
+variable in all caps in curly braces ({}), then the default value of that
+option will depend on the value of the environment variable.
+
+Global options:
+          EOBANNER
+      opt :gemset, "Gemset to use {BACKLINE_GEMSET}",
+        :type => :string,
+        :default => ENV['BACKLINE_GEMSET'] || 'backline'
+
+      opt :debug, "Turn backline debug mode on"
+
+      opt :bundle, "Turn bundle exec mode on {BACKLINE_BUNDLE_MODE}",
+        :default => !!ENV['BACKLINE_BUNDLE_MODE']
+
+      opt :clone, "Clone to use, e.g. 'stable' {BACKLINE_CLONE}",
+        :type => :string,
+        :default => ENV['BACKLINE_CLONE'] || 'stable'
+    end
+  end
+
+  def path
+    [
+      "#{home}/bin",
+      "#{home}/gemsets/#{opts[:gemset]}/ruby/1.9.1/bin",
+      "#{home}/gemsets/global/ruby/1.9.1/bin",
+      "#{ENV['PATH']}",
+    ].join(':')
+  end
+
+  def gem_home
+    @gem_home ||= "#{home}/gemsets/#{opts[:gemset]}/ruby/1.9.1"
+  end
+
+  def gem_path
+    @gem_path ||= "#{home}/gemsets/global/ruby/1.9.1:/opt/backline/lib/ruby/gems/1.9.1"
+  end
+
+  ##
+  # print_env prints out a bourn SH compatible script.  The intent is to eval
+  # the result in a shell.  For example, in bash: eval "$(backline shellinit)"
+  def print_env
+    puts "# #{File.expand_path(__FILE__)} shellinit"
+    puts "PS1=\"(#{opts[:gemset]}:#{opts[:clone]})${PS1}\""
+    if ENV['GEM_HOME_OLD']
+      puts "GEM_HOME_OLD='#{ENV['GEM_HOME_OLD']}'"
+    end
+    if ENV['GEM_PATH_OLD']
+      puts "GEM_PATH_OLD='#{ENV['GEM_PATH_OLD']}'"
+    end
+    puts "export GEM_HOME='#{gem_home}'"
+    puts "export GEM_PATH='#{gem_path}'"
+    puts "export PATH='#{path}'"
+    puts "export BACKLINE_GEMSET=#{opts[:gemset]}"
+    puts "export FACTER_BACKLINE_CLONE='#{opts[:clone]}'"
+    puts "export BACKLINE_CLONE='#{opts[:clone]}'"
+    puts "export RBVMOMI_HOST=vcenter.ops.puppetlabs.net"
+    puts "export RBVMOMI_INSECURE=1"
+    puts "export RBVMOMI_USER=devapp@puppetlabs.com"
+    puts "export RBVMOMI_PASSWORD=\"${RBVMOMI_PASSWORD:-ChangeMe}\""
+  end
+
+  def run
+    cmd = argv.shift
+    case cmd
+    when 'shellinit'
+      print_env
+    when 'setup'
+      setup_obj = argv.shift
+      case setup_obj
+      when 'master'
+        setup_master
+      when '', nil
+        Trollop.die "setup requires the name of the thing to set up. e.g. `master`"
+      else
+        Trollop.die "unknown setup object #{(setup_obj || "").inspect}"
+      end
+    when 'list'
+      print_gemsets
+    when 'exec'
+      exec *argv
+    when 'puppet'
+      run_puppet(argv)
+    else
+      Trollop.die "unknown subcommand #{(cmd || "").inspect}"
+    end
+  end
+
+  ##
+  # attempt to avoid ridiculousness like `backline -g bundler exec bundle exec
+  # puppet`
+  #
+  # @param [Arrag<String>] argv the Puppet argument vector.  This method will
+  # set `--confdir` and `--vardir` immediately after the subcommand.
+  def run_puppet(argv)
+    # TODO: We explicitly don't allow the user to specify confdir and vardir
+    # with backline.  This may become an issue, but they could fall back to
+    # `backline exec`
+    subcommand = argv.shift
+    puppet_args = [ "puppet",
+                    subcommand,
+                    "--confdir=/etc/backline/puppet",
+                    "--vardir=/var/lib/backline/puppet",
+                    *argv ]
+    exec *puppet_args
+  end
+
+  ##
+  # Debug log a message if `--debug` is true
+  def debug(msg)
+    return unless opts[:debug]
+    puts "Backline Debug: #{msg}"
+  end
+
+  ##
+  # exec executes a system command using the configured environment.  For
+  # example, this may be used to install gems into a specific gemset: `sudo
+  # /opt/backline/bin/backline --gemset=backline exec gem install puppet`
+  #
+  # If the {opts[:bundle]} option is enabled then the puppet command will be
+  # wrapped in bundle exec.
+  def exec(*args)
+    ENV['BACKLINE_CLONE'] = "#{opts[:clone]}"
+    ENV['FACTER_BACKLINE_CLONE'] = "#{opts[:clone]}"
+
+    ENV['BACKLINE_GEMSET'] = opts[:gemset]
+    debug "BACKLINE_GEMSET=#{ENV['BACKLINE_GEMSET']}"
+    ENV['PATH'] = path
+    debug "PATH=#{ENV['PATH']}"
+    ENV['GEM_HOME'] = gem_home
+    debug "GEM_HOME=#{ENV['GEM_HOME']}"
+    ENV['GEM_PATH'] = gem_path
+    debug "GEM_PATH=#{ENV['GEM_PATH']}"
+
+    bundle_args = [ 'bundle', 'exec' ] if opts[:bundle]
+    cmd_vector = [*bundle_args, *args]
+    debug "Executing: #{cmd_vector.inspect}"
+    Kernel.exec *cmd_vector
+  end
+
+  ##
+  # print_gemsets prints out a list of gemsets currently present on the system.
+  def print_gemsets
+    gemsets = [
+      'global',
+      *Dir["#{home}/gemsets/*"].collect { |d| File.basename(d) }
+    ].sort.uniq
+    data = {
+      'gemsets' => gemsets,
+      'gemset' => gemsets.inject({}) { |memo, gemset|
+        memo[gemset] = {
+          'path' => "#{home}/gemsets/#{gemset}/ruby/1.9.1",
+        }
+        memo
+      }
+    }
+    puts JSON.pretty_generate(data)
+  end
+
+  ##
+  # setup performs all of the tasks necessary to
+  def setup_master
+    wrapper_script = "backline --gemset master --debug exec"
+    system "rpm -Uvh http://packages/yum/backline/latest/el/6/backline-release.rpm"
+    system "yum --disablerepo='*' --enablerepo='backline*' clean all"
+    system "#{wrapper_script} gem install puppet --no-ri --no-rdoc"
+    puts "Installed Puppet version:"
+    system "#{wrapper_script} puppet --version"
+  end
+end
+
+app = Application.new(:env => ENV.to_hash, :argv => ARGV.dup)
+app.run
