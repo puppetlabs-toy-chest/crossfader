@@ -1,0 +1,52 @@
+#! /bin/bash
+# Setup a dev environment given the base crossfader runtime
+base="/opt/crossfader/runtime"
+name="$(basename $0)"
+
+set -e
+set -u
+
+usage() {
+  echo "USAGE:"
+  echo "  $name [subcommand]"
+  echo
+  echo "Subcommands:"
+  echo "  exec      - execute a command with the 'crossfader' gemset"
+  echo "  shellinit - initialize shell environment variables"
+  echo
+  echo "Hint: $name exec gem env"
+}
+
+if [ $# -eq 0 ]; then
+  usage
+  exit 0
+fi
+
+subcommand="$1"
+shift
+
+gempath="$(${base}/bin/gem env gempath)"
+
+: ${XFADE_ORIG_PATH:=$PATH}
+
+case $subcommand in
+  shellinit)
+    echo export XFADE_ORIG_PATH="'${XFADE_ORIG_PATH}'"
+    echo export PATH="'${base}/gemsets/crossfader/bin:${base}/gemsets/global/bin:${base}/bin:$XFADE_ORIG_PATH'"
+    echo export GEM_HOME="'${base}/gemsets/crossfader'"
+    echo export GEM_PATH="'${base}/gemsets/global:${gempath}'"
+    ;;
+  exec)
+    export XFADE_ORIG_PATH="${XFADE_ORIG_PATH}"
+    export PATH="${base}/gemsets/crossfader/bin:${base}/gemsets/global/bin:${base}/bin:$XFADE_ORIG_PATH"
+    export GEM_HOME="${base}/gemsets/crossfader"
+    export GEM_PATH="${base}/gemsets/global:${gempath}"
+    exec "$@"
+    ;;
+  *)
+    echo "** ERROR ** unknown subcommand $subcommand" >&2
+    echo ""
+    usage
+    exit 1
+    ;;
+esac
