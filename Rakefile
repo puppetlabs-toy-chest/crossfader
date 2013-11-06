@@ -206,6 +206,7 @@ class PackageBuilder < GenericBuilder
   def install_gems
     bin = "/opt/crossfader/bin"
     sh "./bin/xfade-run exec gem install bundler -v 1.3.5 --no-ri --no-rdoc"
+    sh "./bin/xfade-run exec gem install trollop -v '~> 2.0.0' --no-ri --no-rdoc"
     # Here is the main entry point from the end-user perspective
     # FIXME: This should probably be a proper gem instead of a single file.
     sh "test -d #{bin} || mkdir -p #{bin}"
