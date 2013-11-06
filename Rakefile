@@ -190,33 +190,6 @@ class PackageBuilder < GenericBuilder
     move package_name, "pkg/#{package_name}"
   end
 
-  def package_gemsets
-    package_name = "crossfader_#{config.mac_version}_runtime_gems-#{config.version}.pkg"
-    package_id = "crossfader_runtime_gems"
-    root = "/opt/crossfader/runtime/gemsets/crossfader"
-    bin = "/opt/crossfader/bin"
-
-    sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
-    sh "mkdir -p #{File.join('destroot', root)}"
-    sh "rsync -axH #{root}/ #{File.join('destroot', root)}/"
-    sh "mkdir -p #{File.join('destroot', bin)}"
-    sh "rsync -axH #{bin}/ #{File.join('destroot', bin)}/"
-
-    sh "pkgbuild --identifier com.puppetlabs.#{package_id} --root destroot --ownership recommended --version #{config.version} '#{package_name}'"
-    sh 'bash -c "test -d pkg || mkdir pkg"'
-    move package_name, "pkg/#{package_name}"
-  end
-
-  def install_gems
-    bin = "/opt/crossfader/bin"
-    sh "./bin/xfade-run exec gem install bundler -v 1.3.5 --no-ri --no-rdoc"
-    sh "./bin/xfade-run exec gem install trollop -v '~> 2.0.0' --no-ri --no-rdoc"
-    # Here is the main entry point from the end-user perspective
-    # FIXME: This should probably be a proper gem instead of a single file.
-    sh "test -d #{bin} || mkdir -p #{bin}"
-    FileUtils.install "crossfader/bin/crossfader", "#{bin}/crossfader", :mode => 0755, :verbose => true
-  end
-
   def synthesize
     sh 'test -d artifacts/ || mkdir artifacts/'
     Dir.chdir 'pkg' do
@@ -454,11 +427,6 @@ desc "Add extra packages to pkg/"
 task :extras do
   package_builder.link_extra_packages
 end
-desc "Package /opt/crossfader/runtime/gemsets/crossfader"
-task :package_gemsets do
-  package_builder.install_gems
-  package_builder.package_gemsets
-end
 
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
@@ -474,12 +442,16 @@ task :crossfader do
   rm_rf '/opt/crossfader/runtime'
 
   sh %{rake CONFIG=crossfaderuntime build}
+  # Install the crossfader gem.
+  Dir.chdir 'crossfader' do
+    sh %{../bin/xfade-run exec gem env}
+    sh %{../bin/xfade-run exec rake install}
+    sh %{../bin/xfade-run exec gem list}
+    sh %{../bin/xfade-run exec gem which crossfader}
+    sh %{../bin/xfade-run exec which crossfader}
+  end
+  # Package the runtime
   sh %{rake CONFIG=crossfaderuntime package}
-
-  # Crossfader tool itself.
-  rm_rf "/opt/crossfader/runtime/gemsets/crossfader"
-  package_builder.install_gems
-  package_builder.package_gemsets
 
   # Each Ruby Configuration
   Dir["config/crossfader_*.yaml"].sort.each do |crossfader_config_file|

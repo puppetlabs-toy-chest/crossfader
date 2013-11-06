@@ -25,22 +25,22 @@ fi
 subcommand="$1"
 shift
 
-gempath="$(${base}/bin/gem env gempath)"
-
 : ${XFADE_ORIG_PATH:=$PATH}
 
 case $subcommand in
   shellinit)
     echo export XFADE_ORIG_PATH="'${XFADE_ORIG_PATH}'"
-    echo export PATH="'${base}/gemsets/crossfader/bin:${base}/gemsets/global/bin:${base}/bin:$XFADE_ORIG_PATH'"
-    echo export GEM_HOME="'${base}/gemsets/crossfader'"
-    echo export GEM_PATH="'${base}/gemsets/global:${gempath}'"
+    echo export PATH="'${base}/bin:$XFADE_ORIG_PATH'"
+    echo export GEM_HOME=""
+    echo export GEM_PATH=""
+    echo export RUBYOPT=""
     ;;
   exec)
     export XFADE_ORIG_PATH="${XFADE_ORIG_PATH}"
-    export PATH="${base}/gemsets/crossfader/bin:${base}/gemsets/global/bin:${base}/bin:$XFADE_ORIG_PATH"
-    export GEM_HOME="${base}/gemsets/crossfader"
-    export GEM_PATH="${base}/gemsets/global:${gempath}"
+    export PATH="${base}/bin:$XFADE_ORIG_PATH"
+    export GEM_HOME=""
+    export GEM_PATH=""
+    export RUBYOPT=""
     exec "$@"
     ;;
   *)
