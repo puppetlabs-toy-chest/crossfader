@@ -41,6 +41,10 @@ class Configuration
     version
   end
 
+  def file
+    @config_file
+  end
+
   def version
     @version ||= `git describe --always`.chomp
   end
@@ -279,6 +283,44 @@ class RubyBuilder < GenericBuilder
         --without-tk --without-tcl
     EOCONFIG
   end
+
+  def bundle_install_path(gemset="crossfader")
+    return @bundle_install_path if @bundle_install_path
+
+    if @config.root_is_prefix?
+      @bundle_install_path = "#{@config.root}/lib/ruby/gems/1.9.1"
+    else
+      # /opt/crossfader/gemsets/1.9.3-p448/crossfader
+      path = "#{@config.root}/../gemsets/#{@config[group][:version]}/#{gemset}"
+      @bundle_install_path = File.expand_path(path)
+    end
+  end
+  private :bundle_install_path
+
+  # If the configuration defines a bundle gemfile, install it
+  def install_gems
+    gemfile = File.basename(config.file, '.yaml') + '.gemfile'
+    gemfile_path = File.join(File.dirname(config.file), gemfile)
+
+    if File.exists? gemfile_path
+      Dir.chdir File.dirname(gemfile_path) do
+        gemfile = File.basename(gemfile_path)
+        sh "bundle install --gemfile #{gemfile} --path #{bundle_install_path}"
+      end
+    else
+      puts "INFO: No gemfile #{gemfile_path} exists, skipping gem installation"
+    end
+  end
+
+  def build
+    puts "Installing #{id} into #{prefix} ..."
+    Dir.chdir(config[@id][:src]) do
+      configure
+      make
+      install
+      install_gems
+    end
+  end
 end
 
 ##
@@ -339,6 +381,11 @@ end
 ruby = RubyBuilder.new(config)
 file "#{ruby.prefix}/bin/ruby" => ["unpack:ruby", "build:ffi", "build:zlib", "build:yaml", "build:openssl", "build:autoconf"] do
   ruby.build
+end
+
+desc "Install gems described in gemfile"
+task :gemfile do
+  ruby.install_gems
 end
 
 if config[:rubygems]

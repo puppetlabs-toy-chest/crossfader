@@ -6,6 +6,8 @@
   end
 end
 
+# FIXME This needs the ruby/1.9.1 extension on it like the other gemsets
+# installed with Bundler.
 ENV['GEM_HOME'] = "/opt/crossfader/runtime/gemsets/crossfader"
 ENV['GEM_PATH'] = "/opt/crossfader/runtime/gemsets/global:/opt/crossfader/runtime/lib/ruby/gems/1.9.1"
 
