@@ -13,6 +13,23 @@ task :default => :help
 class ConfigurationError < StandardError; end
 
 ##
+# install the crossfader gem.  The runtime needs to be installed for this to
+# work.
+def install_crossfader
+  # Install the crossfader gem into the runtime ruby environment.
+  Dir.chdir 'crossfader' do
+    rm_rf 'pkg/*'
+    sh %{../bin/xfade-run exec gem env}
+    sh %{../bin/xfade-run exec gem install bundler -v '~> 1.3.5' --no-ri --no-rdoc}
+    sh %{../bin/xfade-run exec rake build}
+    sh %{../bin/xfade-run exec gem install pkg/*.gem --no-ri --no-rdoc}
+    sh %{../bin/xfade-run exec gem list}
+    sh %{../bin/xfade-run exec gem which crossfader}
+    sh %{../bin/xfade-run exec which crossfader}
+  end
+end
+
+##
 # configname determines which configuration file will be read from
 # `config/<configname>.yaml`.  The default is "master" and can be overridden
 # with the CONFIG environment variable.
@@ -185,6 +202,12 @@ class PackageBuilder < GenericBuilder
     sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
     sh "mkdir -p #{File.join('destroot', config.root)}"
     sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
+    # Add extra stuff to the destroot
+    if config[:extras]
+      [*config[:extras]].each do |extra|
+        sh "rsync -axH #{extra}/ destroot/"
+      end
+    end
     sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{package_name}'"
     sh 'bash -c "test -d pkg || mkdir pkg"'
     move package_name, "pkg/#{package_name}"
@@ -442,15 +465,11 @@ task :crossfader do
   rm_rf '/opt/crossfader/runtime'
 
   sh %{rake CONFIG=crossfaderuntime build}
-  # Install the crossfader gem.
-  Dir.chdir 'crossfader' do
-    sh %{../bin/xfade-run exec gem env}
-    sh %{../bin/xfade-run exec rake install}
-    sh %{../bin/xfade-run exec gem list}
-    sh %{../bin/xfade-run exec gem which crossfader}
-    sh %{../bin/xfade-run exec which crossfader}
-  end
-  # Package the runtime
+  # Install the crossfader gem and dependencies into the runtime build.
+  install_crossfader
+  # FIXME Link /opt/crossfader/bin/crossfader to /opt/crossfader/runtime/bin/crossfader
+
+  # Package the runtime and installed tools.
   sh %{rake CONFIG=crossfaderuntime package}
 
   # Each Ruby Configuration
@@ -487,5 +506,12 @@ namespace :print do
   desc "Print the package name for this configuration"
   task :package_name do
     puts config.package_name
+  end
+end
+
+namespace :temp do
+  desc "Install the crossfader gem"
+  task :install do
+    install_crossfader
   end
 end

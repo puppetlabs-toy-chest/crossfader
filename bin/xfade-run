@@ -31,16 +31,16 @@ case $subcommand in
   shellinit)
     echo export XFADE_ORIG_PATH="'${XFADE_ORIG_PATH}'"
     echo export PATH="'${base}/bin:$XFADE_ORIG_PATH'"
-    echo export GEM_HOME=""
-    echo export GEM_PATH=""
-    echo export RUBYOPT=""
+    echo unset GEM_HOME
+    echo unset GEM_PATH
+    echo unset RUBYOPT
     ;;
   exec)
     export XFADE_ORIG_PATH="${XFADE_ORIG_PATH}"
     export PATH="${base}/bin:$XFADE_ORIG_PATH"
-    export GEM_HOME=""
-    export GEM_PATH=""
-    export RUBYOPT=""
+    unset GEM_HOME
+    unset GEM_PATH
+    unset RUBYOPT
     exec "$@"
     ;;
   *)
