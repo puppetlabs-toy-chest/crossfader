@@ -1,6 +1,8 @@
 ---
 :root: /opt/backline
 :root_is_prefix: true
+:name: backline
+:name_suffix: ruby
 :ruby:
   :src: src/ruby-1.9.3-p448
   :version: 1.9.3-p448

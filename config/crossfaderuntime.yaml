@@ -16,3 +16,5 @@
   :src: src/libffi-3.0.11
 :autoconf:
   :src: src/autoconf-2.68
+:extras:
+  - extras/crossfader_bin

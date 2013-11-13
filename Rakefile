@@ -13,15 +13,32 @@ task :default => :help
 class ConfigurationError < StandardError; end
 
 ##
+# install the crossfader gem.  The runtime needs to be installed for this to
+# work.
+def install_crossfader
+  # Install the crossfader gem into the runtime ruby environment.
+  Dir.chdir 'crossfader' do
+    rm_rf 'pkg/*'
+    sh %{../bin/xfade-run exec gem env}
+    sh %{../bin/xfade-run exec gem install bundler -v '~> 1.3.5' --no-ri --no-rdoc}
+    sh %{../bin/xfade-run exec rake build}
+    sh %{../bin/xfade-run exec gem install pkg/*.gem --no-ri --no-rdoc}
+    sh %{../bin/xfade-run exec gem list}
+    sh %{../bin/xfade-run exec gem which crossfader}
+    sh %{../bin/xfade-run exec which crossfader}
+  end
+end
+
+##
 # configname determines which configuration file will be read from
 # `config/<configname>.yaml`.  The default is "master" and can be overridden
-# with the PVM_CONFIG environment variable.
+# with the CONFIG environment variable.
 #
 # @api public
 #
 # @return [String] "master" is the default
 def configname
-  ENV['PVM_CONFIG'] || "master"
+  ENV['CONFIG'] || "master"
 end
 
 def config
@@ -39,6 +56,10 @@ class Configuration
     @config_file = File.join(File.dirname(__FILE__), "config/#{name}.yaml")
     config_reset
     version
+  end
+
+  def file
+    @config_file
   end
 
   def version
@@ -181,6 +202,12 @@ class PackageBuilder < GenericBuilder
     sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
     sh "mkdir -p #{File.join('destroot', config.root)}"
     sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
+    # Add extra stuff to the destroot
+    if config[:extras]
+      [*config[:extras]].each do |extra|
+        sh "rsync -axH #{extra}/ destroot/"
+      end
+    end
     sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{package_name}'"
     sh 'bash -c "test -d pkg || mkdir pkg"'
     move package_name, "pkg/#{package_name}"
@@ -252,6 +279,44 @@ class RubyBuilder < GenericBuilder
         --without-tk --without-tcl
     EOCONFIG
   end
+
+  def bundle_install_path(gemset="crossfader")
+    return @bundle_install_path if @bundle_install_path
+
+    if @config.root_is_prefix?
+      @bundle_install_path = "#{@config.root}/lib/ruby/gems/1.9.1"
+    else
+      # /opt/crossfader/gemsets/1.9.3-p448/crossfader
+      path = "#{@config.root}/../gemsets/#{@config[group][:version]}/#{gemset}"
+      @bundle_install_path = File.expand_path(path)
+    end
+  end
+  private :bundle_install_path
+
+  # If the configuration defines a bundle gemfile, install it
+  def install_gems
+    gemfile = File.basename(config.file, '.yaml') + '.gemfile'
+    gemfile_path = File.join(File.dirname(config.file), gemfile)
+
+    if File.exists? gemfile_path
+      Dir.chdir File.dirname(gemfile_path) do
+        gemfile = File.basename(gemfile_path)
+        sh "bundle install --gemfile #{gemfile} --path #{bundle_install_path}"
+      end
+    else
+      puts "INFO: No gemfile #{gemfile_path} exists, skipping gem installation"
+    end
+  end
+
+  def build
+    puts "Installing #{id} into #{prefix} ..."
+    Dir.chdir(config[@id][:src]) do
+      configure
+      make
+      install
+      install_gems
+    end
+  end
 end
 
 ##
@@ -314,6 +379,11 @@ file "#{ruby.prefix}/bin/ruby" => ["unpack:ruby", "build:ffi", "build:zlib", "bu
   ruby.build
 end
 
+desc "Install gems described in gemfile"
+task :gemfile do
+  ruby.install_gems
+end
+
 if config[:rubygems]
   rubygems = RubyGemsBuilder.new(config, :rubygems)
   file "#{rubygems.prefix}/bin/gem" => ["#{rubygems.prefix}/bin/ruby"] do
@@ -350,30 +420,8 @@ end
 
 directory "#{config.root}"
 directory "#{config.root}/bin"
-file "#{config.root}/bin/pvm" => ["#{config.root}/bin", "uninstall:pvm"] do
-  sh "cp bin/pvm #{config.root}/bin/pvm"
-  sh "chmod 755 #{config.root}/bin/pvm"
-end
 
-namespace "install" do
-  desc "Install pvm script (#{config.root}/bin/pvm)"
-  task :pvm => ["#{config.root}/bin/pvm"]
-
-  desc "Install default gems"
-  task :gems => ["#{config.root}/bin/pvm"] do
-    sh "bash -c 'PVM_GEMSET=bundler PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm exec gem install bundler --no-rdoc'"
-    sh "bash -c 'PVM_GEMSET=pvm PVM_RUBY_VERSION=#{config[:ruby][:version]} #{config.root}/bin/pvm exec gem install trollop --no-rdoc'"
-  end
-end
-
-namespace "uninstall" do
-  desc "Remove pvm script (#{config.root}/bin/pvm)"
-  task :pvm do
-    sh "rm -f #{config.root}/bin/pvm"
-  end
-end
-
-desc "Build all of the things (PVM_CONFIG=#{configname})"
+desc "Build all of the things (CONFIG=#{configname})"
 task :build => ["build:openssl", "build:yaml", "build:ffi", "build:ruby"] do
   puts "All Done!"
 end
@@ -408,14 +456,21 @@ task :crossfader do
   rm_rf 'pkg'
   rm_rf 'destroot'
   rm_rf 'artifacts'
+
   # Build the crossfader runtime.  This is used for the crossfade toolset
   # itself so that end users don't accidentally delete the version the tools
   # require.
-  sh 'git clean -fdx src/'
-  sh 'git checkout HEAD src/'
+  sh %{git clean -fdx src/}
+  sh %{git checkout HEAD src/}
   rm_rf '/opt/crossfader/runtime'
-  sh "bundle exec rake PVM_CONFIG=crossfaderuntime build"
-  sh "bundle exec rake PVM_CONFIG=crossfaderuntime package"
+
+  sh %{rake CONFIG=crossfaderuntime build}
+  # Install the crossfader gem and dependencies into the runtime build.
+  install_crossfader
+  # FIXME Link /opt/crossfader/bin/crossfader to /opt/crossfader/runtime/bin/crossfader
+
+  # Package the runtime and installed tools.
+  sh %{rake CONFIG=crossfaderuntime package}
 
   # Each Ruby Configuration
   Dir["config/crossfader_*.yaml"].sort.each do |crossfader_config_file|
@@ -424,15 +479,12 @@ task :crossfader do
     crossfader_config = Configuration.new(config_name)
 
     rm_rf 'destroot'
-    sh 'git clean -fdx src/'
-    sh 'git checkout HEAD src/'
+    sh %{git clean -fdx src/}
+    sh %{git checkout HEAD src/}
     rm_rf crossfader_config.root
-    sh "bundle exec rake PVM_CONFIG=#{config_name} build"
-    sh "bundle exec rake PVM_CONFIG=#{config_name} package"
+    sh %{rake CONFIG=#{config_name} build}
+    sh %{rake CONFIG=#{config_name} package}
   end
-
-  # Crossfader tool itself.
-  # FIXME
 
   # Link extra packages (Command Line Tools, etc...)
   package_builder.link_extra_packages
@@ -454,5 +506,12 @@ namespace :print do
   desc "Print the package name for this configuration"
   task :package_name do
     puts config.package_name
+  end
+end
+
+namespace :temp do
+  desc "Install the crossfader gem"
+  task :install do
+    install_crossfader
   end
 end

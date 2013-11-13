@@ -1,0 +1,11 @@
+#! /usr/bin/env ruby
+#
+
+# Trap interrupts to quit cleanly. See
+# https://twitter.com/mitchellh/status/283014103189053442
+Signal.trap("INT") { exit 1 }
+
+require 'crossfader/application'
+
+app = Crossfader::Application.new(:env => ENV.to_hash, :argv => ARGV.dup)
+app.run
