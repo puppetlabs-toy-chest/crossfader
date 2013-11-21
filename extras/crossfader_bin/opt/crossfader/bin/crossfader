@@ -1,2 +1,5 @@
 #! /bin/bash
+unset GEM_PATH
+unset GEM_HOME
+unset RUBYOPT
 exec /opt/crossfader/runtime/bin/crossfader "$@"
