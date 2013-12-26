@@ -167,6 +167,10 @@ class GenericBuilder
     @prefix ||= @config.root_is_prefix? ? @config.root : "#{@config.root}/#{group}/#{@config[group][:version]}"
   end
 
+  def gemset_folder
+    @gemset_folder ||= File.join(prefix, 'gemsets')
+  end
+
   def configure
     sh "bash ./configure --prefix=#{prefix}"
   end
@@ -199,7 +203,7 @@ class PackageBuilder < GenericBuilder
 
   def package
     package_name = config.package_name
-    sh 'bash -c "test -d destroot && rm -rf destroot || mkdir destroot"'
+    sh 'bash -c "test -d destroot && sudo rm -rf destroot || mkdir destroot"'
     sh "mkdir -p #{File.join('destroot', config.root)}"
     sh "rsync -axH #{config.root}/ #{File.join('destroot', config.root)}/"
     # Add extra stuff to the destroot
@@ -208,7 +212,16 @@ class PackageBuilder < GenericBuilder
         sh "rsync -axH #{extra}/ destroot/"
       end
     end
-    sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership recommended --version #{config.version} '#{package_name}'"
+
+    # Set ownership and permissions on the gemset folder to allow normal users
+    # to install gems.
+    destroot_gemset_folder = File.join('destroot', gemset_folder)
+    sh "sudo chown -R root:admin #{destroot_gemset_folder}"
+    sh "sudo chmod -R ug+rwX,o-w,o+rX,g+s #{destroot_gemset_folder}"
+    # --ownership preserve-other will apply the recom-mended recommended mended
+    # UID and GID to those files that are owned by the user running pkgbuild,
+    # but leave other files unchanged.
+    sh "pkgbuild --identifier com.puppetlabs.#{config.package_id} --root destroot --ownership preserve-other --version #{config.version} '#{package_name}'"
     sh 'bash -c "test -d pkg || mkdir pkg"'
     move package_name, "pkg/#{package_name}"
   end
@@ -465,7 +478,7 @@ namespace :purge do
   end
   desc "Purge destroot/"
   task :destroot do
-    rm_rf 'destroot/'
+    sh 'sudo rm -rf destroot/'
   end
 end
 
@@ -486,7 +499,7 @@ end
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
   rm_rf 'pkg'
-  rm_rf 'destroot'
+  sh 'sudo rm -rf destroot/'
   rm_rf 'artifacts'
 
   # Build the crossfader runtime.  This is used for the crossfade toolset
@@ -510,7 +523,7 @@ task :crossfader do
     config_name = path.basename('.yaml')
     crossfader_config = Configuration.new(config_name)
 
-    rm_rf 'destroot'
+    sh %{sudo rm -rf destroot}
     sh %{git clean -fdx src/}
     sh %{git checkout HEAD src/}
     rm_rf crossfader_config.root
@@ -527,7 +540,7 @@ end
 
 desc "Reset the build tree"
 task :reset do
-  rm_rf "destroot"
+  sh 'sudo rm -rf destroot'
   Dir["#{config.root}/*"].each do |d|
     rm_rf d
   end
