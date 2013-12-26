@@ -295,17 +295,49 @@ class RubyBuilder < GenericBuilder
 
   # If the configuration defines a bundle gemfile, install it
   def install_gems
-    gemfile = File.basename(config.file, '.yaml') + '.gemfile'
-    gemfile_path = File.join(File.dirname(config.file), gemfile)
+    # Array of Array's, e.g. [ [ 'bundler', '~> 1.3.5' ] ]
+    gemlist_path = File.basename(config.file, '.yaml') + '_gems.yaml'
 
-    if File.exists? gemfile_path
-      Dir.chdir File.dirname(gemfile_path) do
-        gemfile = File.basename(gemfile_path)
-        sh "bundle install --gemfile #{gemfile} --path #{bundle_install_path}"
-      end
+    if File.exists? gemlist_path
+      gemlist = YAML.load(File.read(gemlist_path))
     else
-      puts "INFO: No gemfile #{gemfile_path} exists, skipping gem installation"
+      gemlist = [ [ 'bundler', '~> 1.3.5' ] ]
+      puts "##### INFO: #{gemlist_path} does not exist, using default gemlist of: "
+      puts gemlist.to_yaml
+      puts "##### "
     end
+
+    gem_home_orig = ENV['GEM_HOME']
+    gem_path_orig = ENV['GEM_PATH']
+    path_orig = ENV['PATH']
+
+    ENV['PATH'] = [ File.join(prefix, 'bin'), ENV['PATH'] ].join(File::PATH_SEPARATOR)
+    ENV['GEM_HOME'] = nil
+    ENV['GEM_PATH'] = nil
+
+    # Figure out the ruby engine and ruby version used for construction of
+    # GEM_PATH and GEM_HOME
+    ruby_engine = %x{#{File.join(prefix, 'bin', 'ruby')} -e "puts defined?(RUBY_ENGINE) ? RUBY_ENGINE : %{ruby}"}.chomp
+    ruby_version = %x{#{File.join(prefix, 'bin', 'ruby')} -rrbconfig -e 'puts RbConfig::CONFIG["ruby_version"]'}.chomp
+
+    ENV['GEM_HOME'] = File.join(gemset_folder, 'global', ruby_engine, ruby_version)
+    ENV['GEM_PATH'] = File.join(prefix, 'lib', 'ruby', 'gems', ruby_version)
+
+    # Finally, install the gems into the global gemset.
+    gemlist.each do |gem, version|
+      puts "##### INFO: Gem Environment used to install global gemset"
+      sh "gem env"
+      puts "##### INFO Installing #{gem} version #{version} into #{ENV['GEM_HOME']}"
+      sh "gem install #{gem} --version '#{version}' --no-ri --no-rdoc"
+      puts "##### INFO Results for #{gem} are:"
+      sh "gem list"
+      sh "gem which #{gem}"
+      puts "##### End of installation for #{gem}"
+    end
+
+    ENV['GEM_HOME'] = gem_home_orig
+    ENV['GEM_PATH'] = gem_path_orig
+    ENV['PATH'] = path_orig
   end
 
   def build
