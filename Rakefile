@@ -31,14 +31,14 @@ end
 
 ##
 # configname determines which configuration file will be read from
-# `config/<configname>.yaml`.  The default is "master" and can be overridden
+# `config/<configname>.yaml`.  The default is "crossfaderuntime" and can be overridden
 # with the CONFIG environment variable.
 #
 # @api public
 #
-# @return [String] "master" is the default
+# @return [String] "crossfaderuntime" is the default
 def configname
-  ENV['CONFIG'] || "master"
+  ENV['CONFIG'] || "crossfaderuntime"
 end
 
 def config
@@ -496,6 +496,34 @@ task :extras do
   package_builder.link_extra_packages
 end
 
+class VersionFileBuilder < GenericBuilder
+  def initialize(config, id=:ruby, group=:ruby)
+    super(config, id, group)
+  end
+
+  ##
+  # Build a special package that contains only /opt/crossfader/version.txt  This
+  # is meant to be built first and will feed into the synthesized set of
+  # packages.
+  def build
+    sh 'sudo rm -rf destroot/'
+
+    mkdir_p 'destroot/opt/crossfader/'
+    # Write the version information
+    version_file = File.join('destroot/opt/crossfader/version.txt')
+    File.open(version_file, "w") do |f|
+      f.puts config.version
+    end
+    puts "##### INFO: Wrote version string #{config.version} to #{version_file}"
+
+    cmd = "pkgbuild --identifier com.puppetlabs.crossfader_version --root destroot --ownership preserve-other --version #{config.version} 'crossfader_version.pkg'"
+    puts "##### INFO: Executing `#{cmd}`"
+    sh cmd
+    sh 'bash -c "test -d pkg || mkdir pkg"'
+    move 'crossfader_version.pkg', "pkg/crossfader_version.pkg"
+  end
+end
+
 desc "Build crossfader package, which builds each config/crossfader_*.yaml config"
 task :crossfader do
   rm_rf 'pkg'
@@ -507,7 +535,10 @@ task :crossfader do
   # require.
   sh %{git clean -fdx src/}
   sh %{git checkout HEAD src/}
-  rm_rf '/opt/crossfader/runtime'
+  sh %{sudo rm -rf /opt/crossfader/runtime}
+
+  # Build the crossfader version text file package.
+  VersionFileBuilder.new(config).build
 
   sh %{rake CONFIG=crossfaderuntime build}
   # Install the crossfader gem and dependencies into the runtime build.
