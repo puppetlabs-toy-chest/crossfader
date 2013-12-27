@@ -11,6 +11,21 @@ class Crossfader::Application
     Crossfader::VERSION
   end
 
+  ##
+  # build_version reads and returns the first line without trailing newline
+  # which should be a version string.  The file read is located at
+  # `/opt/crossfader/version.txt`.  If the file does not exist then "UNKNOWN"
+  # is returned.
+  def build_version
+    return @build_version if @build_version
+    version_file = "/opt/crossfader/version.txt"
+    if File.exists?(version_file)
+      @build_version = File.readlines(version_file).first
+    else
+      @build_version = 'UNKNOWN'
+    end
+  end
+
   def initialize(opts = {})
     @env = opts[:env] || ENV.to_hash
     @argv = opts[:argv] || ARGV.dup
@@ -21,10 +36,11 @@ class Crossfader::Application
 
   def parse_options!
     version = version()
+    build_version = build_version()
     env = env()
     @opts = Trollop.options(argv) do
       stop_on_unknown
-      version "crossfader #{version} (c) 2013 Puppet Labs"
+      version "crossfader #{version} build #{build_version} (c) 2013 Puppet Labs"
       banner BANNER
 
       opt :ruby, "Ruby version to use {CROSSFADER_RUBY}",
