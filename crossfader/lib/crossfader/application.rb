@@ -141,7 +141,7 @@ class Crossfader::Application
       "#{gem_home}/bin",
       "#{gem_dir('global')}/bin",
       "#{prefix}/bin",
-      env['PATH'],
+      env['XFADE_PATH_ORIG'] || env['PATH'],
     ].join(File::PATH_SEPARATOR)
   end
 
@@ -182,7 +182,8 @@ class Crossfader::Application
     puts "export PATH='#{path}'"
     puts "export GEM_HOME='#{gem_home}'"
     puts "export GEM_PATH='#{gem_path}'"
-    puts "export CROSSFADER_GEMSET=#{opts[:gemset]}"
+    puts "export CROSSFADER_RUBY='#{opts[:ruby]}'"
+    puts "export CROSSFADER_GEMSET='#{opts[:gemset]}'"
   end
 
   def run
@@ -211,14 +212,16 @@ class Crossfader::Application
   # example, this may be used to install gems into a specific gemset: `sudo
   # /opt/crossfader/bin/crossfader --gemset=puppet exec gem install puppet`
   def exec(*args)
+    ENV['CROSSFADER_RUBY'] = opts[:ruby]
+    debug "CROSSFADER_RUBY='#{ENV['CROSSFADER_RUBY']}'"
     ENV['CROSSFADER_GEMSET'] = opts[:gemset]
-    debug "CROSSFADER_GEMSET=#{ENV['CROSSFADER_GEMSET']}"
+    debug "CROSSFADER_GEMSET='#{ENV['CROSSFADER_GEMSET']}'"
     ENV['PATH'] = path
-    debug "PATH=#{ENV['PATH']}"
+    debug "PATH='#{ENV['PATH']}'"
     ENV['GEM_HOME'] = gem_home
-    debug "GEM_HOME=#{ENV['GEM_HOME']}"
+    debug "GEM_HOME='#{ENV['GEM_HOME']}'"
     ENV['GEM_PATH'] = gem_path
-    debug "GEM_PATH=#{ENV['GEM_PATH']}"
+    debug "GEM_PATH='#{ENV['GEM_PATH']}'"
 
     debug "Executing: #{args.inspect}"
     Kernel.exec(*args)
@@ -289,8 +292,7 @@ Add this line to your shell initialization scripts.
 Gemsets:
 To install a gem into a specific gemset:
 
-    $ sudo /opt/crossfader/bin/crossfader --gemset=puppet \
-        exec gem install puppet
+    $ crossfader --gemset=puppet exec gem install puppet
 
 Environment:
 In an effort to avoid large command line argument lists, some options will take
