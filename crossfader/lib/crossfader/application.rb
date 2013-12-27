@@ -20,7 +20,7 @@ class Crossfader::Application
     return @build_version if @build_version
     version_file = "/opt/crossfader/version.txt"
     if File.exists?(version_file)
-      @build_version = File.readlines(version_file).first
+      @build_version = File.open(version_file) {|f| f.readline}.chomp
     else
       @build_version = 'UNKNOWN'
     end
@@ -40,7 +40,7 @@ class Crossfader::Application
     env = env()
     @opts = Trollop.options(argv) do
       stop_on_unknown
-      version "crossfader #{version} build #{build_version} (c) 2013 Puppet Labs"
+      version "crossfader #{build_version} (c) 2013 Puppet Labs"
       banner BANNER
 
       opt :ruby, "Ruby version to use {CROSSFADER_RUBY}",
