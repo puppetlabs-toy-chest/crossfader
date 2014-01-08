@@ -1,7 +1,7 @@
 ---
 :root: /opt/operations
 :root_is_prefix: true
-:name: crossfader
+:name: operations
 :name_suffix: ruby_193p484
 :ruby:
   :src: src/ruby-1.9.3-p484
