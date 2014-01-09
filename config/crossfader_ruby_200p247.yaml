@@ -7,7 +7,7 @@
   :src: src/ruby-2.0.0-p247
   :version: 2.0.0-p247
 :openssl:
-  :src: src/openssl-1.0.1e
+  :src: src/openssl-1.0.0l
 :zlib:
   :src: src/zlib-1.2.7
 :yaml:
