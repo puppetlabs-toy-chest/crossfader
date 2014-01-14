@@ -49,11 +49,12 @@ environment.  For example:
     eval "$(/opt/crossfader/bin/crossfader shellinit)"
 
 This could be added to the shell initialization files.  For example if you're
-using zsh then add this line to `~/.zshrc`:
+using zsh then add `crossfader shellinit` to `~/.zshrc` like so:
 
     echo '[ -x /opt/crossfader/bin/crossfader ] && eval "$(/opt/crossfader/bin/crossfader shellinit)"' >> ~/.zshrc
 
-Or if you're using BASH add this line to your `~/.bash_profile`:
+Or if you're using BASH add `crossfader shellinit` to `~/.bash_profile` like
+so:
 
     echo '[ -x /opt/crossfader/bin/crossfader ] && eval "$(/opt/crossfader/bin/crossfader shellinit)"' >> ~/.bash_profile
 
