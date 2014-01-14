@@ -53,6 +53,11 @@ This could be added to the shell initialization files.  For example, in
 
     echo '[ -x /opt/crossfader/bin/crossfader ] && eval "$(/opt/crossfader/bin/crossfader shellinit)"' >> ~/.zshrc
 
+For Mavericks, append to .bash_profile:
+
+	echo '[ -x /opt/crossfader/bin/crossfader ] && eval "$(/opt/crossfader/bin/crossfader shellinit)"' >> ~/.bash_profile	
+
+
 Related Work
 ====
 
