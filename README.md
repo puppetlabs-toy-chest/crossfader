@@ -48,10 +48,14 @@ environment.  For example:
 
     eval "$(/opt/crossfader/bin/crossfader shellinit)"
 
-This could be added to the shell initialization files.  For example, in
-`~/.zshrc`:
+This could be added to the shell initialization files.  For example if you're
+using zsh then add this line to `~/.zshrc`:
 
     echo '[ -x /opt/crossfader/bin/crossfader ] && eval "$(/opt/crossfader/bin/crossfader shellinit)"' >> ~/.zshrc
+
+Or if you're using BASH add this line to your `~/.bash_profile`:
+
+    echo '[ -x /opt/crossfader/bin/crossfader ] && eval "$(/opt/crossfader/bin/crossfader shellinit)"' >> ~/.bash_profile
 
 Related Work
 ====
