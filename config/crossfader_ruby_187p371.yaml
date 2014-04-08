@@ -7,7 +7,7 @@
   :src: src/ruby-1.8.7-p371
   :version: 1.8.7-p371
 :openssl:
-  :src: src/openssl-1.0.0l
+  :src: src/openssl-1.0.1g
 :zlib:
   :src: src/zlib-1.2.7
 :yaml:

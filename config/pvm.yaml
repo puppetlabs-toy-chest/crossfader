@@ -5,7 +5,7 @@
   :src: src/ruby-1.9.3-p448
   :version: animal
 :openssl:
-  :src: src/openssl-1.0.1e
+  :src: src/openssl-1.0.1g
 :zlib:
   :src: src/zlib-1.2.7
 :yaml:
