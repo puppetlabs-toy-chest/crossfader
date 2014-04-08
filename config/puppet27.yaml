@@ -9,7 +9,7 @@
 :zlib:
   :src: src/zlib-1.2.7
 :yaml:
-  :src: src/yaml-0.1.4
+  :src: src/yaml-0.1.6
 :ffi:
   :src: src/libffi-3.0.11
 :autoconf:

@@ -390,6 +390,7 @@ end
 namespace :unpack do
   unpack :ruby, "#{config[:ruby][:src]}.tar.bz2", "src/"
   unpack :openssl, "#{config[:openssl][:src]}.tar.bz2", "src/"
+  unpack :yaml, "#{config[:yaml][:src]}.tar.bz2", "src/"
 end
 
 ##
@@ -405,7 +406,7 @@ file "#{zlib.prefix}/lib/libz.dylib" do
 end
 
 yaml = GenericBuilder.new(config, :yaml)
-file "#{yaml.prefix}/lib/libyaml.dylib" do
+file "#{yaml.prefix}/lib/libyaml.dylib" => ["unpack:yaml"] do
   yaml.build
 end
 
