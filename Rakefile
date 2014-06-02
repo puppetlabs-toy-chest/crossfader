@@ -353,12 +353,24 @@ class RubyBuilder < GenericBuilder
     ENV['PATH'] = path_orig
   end
 
+  ##
+  # Install rubygems for Ruby 1.8.7
+  def install_rubygems
+    rubygems = RubyGemsBuilder.new(config, :rubygems)
+    rubygems.build
+  end
+
   def build
     puts "Installing #{id} into #{prefix} ..."
     Dir.chdir(config[@id][:src]) do
       configure
       make
       install
+    end
+
+    install_rubygems if config[:rubygems]
+
+    Dir.chdir(config[@id][:src]) do
       install_gems
     end
   end
@@ -432,6 +444,9 @@ end
 
 if config[:rubygems]
   rubygems = RubyGemsBuilder.new(config, :rubygems)
+  # The parent build task needs to build rubygems as well
+  task :build => ["#{rubygems.prefix}/bin/gem"]
+
   file "#{rubygems.prefix}/bin/gem" => ["#{rubygems.prefix}/bin/ruby"] do
     rubygems.build
   end
